@@ -1,144 +1,185 @@
-# Sprint 2 — Data Layer Completion
+# Sprint 4 — Task Completion Tracking + Energy Budgeting Engine
 
 > **Status: AWAITING HUMAN APPROVAL**
 > PM wrote this. Dev does not begin until the human operator approves.
 
-**Goal:** Implement Riverpod data providers for Projects, Tasks, and Contexts —
-the remaining three domain models from Sprint 1. This completes the full CRUD
-data layer and unblocks all future UI sprints.
+**Goal:** Build the data primitive for recording task completions, then implement
+the Energy Budgeting Engine as a pure, fully-tested logic layer. This is the
+core differentiator of Habitude — cognitive capacity management instead of time
+management. No UI required this sprint.
 
-**Scope:** `lib/features/goals/` (projects, tasks), `lib/shared/` (contexts)
+**Scope:**
+- `lib/features/energy/task_completion.dart` (new model)
+- `lib/features/energy/task_completion_repository.dart` (new repository)
+- `lib/features/energy/energy_engine.dart` (new pure logic)
+- `lib/features/energy/energy_service.dart` (new Riverpod provider)
+- `lib/shared/firestore_paths.dart` (add `taskCompletions` path)
 
 **Sprint type:** Non-UI. Loop: PM → Dev → Optimization → Security → PM closes.
 
-**Environment note:** `flutter analyze` was crashing on the dev machine in
-Sprint 1 (missing analysis server snapshot). If still broken, document it in
-the handoff and use `dart analyze` as the substitute. The human operator should
-fix the toolchain before this sprint begins (see `state.md` locked decisions).
+**No new packages.** All dependencies already in `pubspec.yaml`.
+
+**Design note — why TaskCompletion is a separate model (not a field on Task):**
+A recurring `Task` can be completed many times (weekly quota). A one-time `Task`
+can be un-completed (undo). The energy baseline needs a dated, immutable record
+per completion event. Adding `completedAt` to `Task` handles only the last
+completion and loses history. A flat `task_completions` collection with one
+document per completion event is the correct data shape.
+
+**Design note — energy tax and capacity warning are out of scope this sprint:**
+The spec's Energy Tax (deducting fixed events) and Capacity Warning (checking
+scheduled task load) both depend on the Calendar feature (Sprint 12). Implementing
+them now would require stub models with no real backing. Deferred deliberately.
 
 ---
 
-### Task 1 — Projects Repository & Provider
+### Task 1 — TaskCompletion model + FirestorePaths update
 
-**File:** `lib/features/goals/projects_repository.dart`
+**File:** `lib/features/energy/task_completion.dart`
 
-**`ProjectsRepository` interface:**
+**Fields:**
+
+| Field | Type | Notes |
+|---|---|---|
+| `id` | `String` | |
+| `taskId` | `String` | References the parent Task |
+| `energyScore` | `int` (≥ 0) | Snapshot of the task's energy at completion time |
+| `completedAt` | `DateTime` (UTC) | When the completion occurred |
+
+**FirestorePaths update:** `lib/shared/firestore_paths.dart`
+Add one static method:
+
+| Method | Returns |
+|---|---|
+| `taskCompletions(String uid)` | `"users/$uid/task_completions"` |
+
+**Acceptance criteria:**
+
+- Given any `TaskCompletion` instance `a`, `a.toJson()` then
+  `TaskCompletion.fromJson(map)` equals `a` (Freezed `==`).
+- Given two `TaskCompletion` instances with identical fields, `a == b` is true.
+- `FirestorePaths.taskCompletions("abc123") == "users/abc123/task_completions"`.
+- All criteria covered by unit tests.
+
+---
+
+### Task 2 — TaskCompletionRepository & Provider
+
+**File:** `lib/features/energy/task_completion_repository.dart`
+
+**`TaskCompletionRepository` interface:**
 
 | Method | Return type | Behavior |
 |---|---|---|
-| `watchProjects()` | `Stream<List<Project>>` | Real-time stream of all projects for the user |
-| `watchProjectsByGoal(String goalId)` | `Stream<List<Project>>` | Stream filtered to one parent goal |
-| `addProject(Project project)` | `Future<void>` | Writes to `projects/{project.id}` |
-| `updateProject(Project project)` | `Future<void>` | Overwrites `projects/{project.id}` |
-| `deleteProject(String id)` | `Future<void>` | Deletes `projects/{id}` |
+| `watchCompletions()` | `Stream<List<TaskCompletion>>` | Real-time stream, all completions for the user |
+| `watchCompletionsSince(DateTime since)` | `Stream<List<TaskCompletion>>` | Stream filtered to `completedAt >= since` |
+| `addCompletion(TaskCompletion c)` | `Future<void>` | Writes to `task_completions/{c.id}` |
+| `deleteCompletion(String id)` | `Future<void>` | Deletes `task_completions/{id}` (supports undo) |
 
 **Providers** (using `riverpod_annotation` / `@riverpod`):
-- `projectsRepositoryProvider` — provides `ProjectsRepository`
-- `projectsStreamProvider` — `StreamProvider<List<Project>>` consuming `watchProjects()`
+- `taskCompletionRepositoryProvider` — provides `TaskCompletionRepository`
+- `taskCompletionsStreamProvider` — `StreamProvider<List<TaskCompletion>>`
+  consuming `watchCompletions()`
 
 **Acceptance criteria** (tests use `fake_cloud_firestore`):
 
-- Given an empty collection, when `watchProjects()` emits, then the list is empty
-  (no error thrown).
-- Given `addProject(projectA)`, when the next `watchProjects()` snapshot emits,
-  then the list contains exactly `projectA` (full Freezed equality).
-- Given `addProject(projectA)` then `deleteProject(projectA.id)`, when the next
-  snapshot emits, then the list is empty.
-- Given `addProject(projectA)` then `updateProject(projectA.copyWith(title: "New"))`,
-  when the next snapshot emits, then `list[0].title == "New"`.
-- Given `addProject(projectA)` and `addProject(projectB)` where `projectA.goalId !=
-  projectB.goalId`, when `watchProjectsByGoal(projectA.goalId)` emits, then only
-  `projectA` is in the result.
-- `projectsStreamProvider` tested with `ProviderContainer`: overriding
-  `projectsRepositoryProvider` with a fake, the stream emits the expected values.
-- No raw Firestore calls outside of `ProjectsRepository`.
+- Given an empty collection, `watchCompletions()` emits an empty list (no error).
+- Given `addCompletion(c)`, the next `watchCompletions()` snapshot contains `c`
+  (full Freezed equality).
+- Given `addCompletion(c)` then `deleteCompletion(c.id)`, the next snapshot is empty.
+- Given `addCompletion(cOld)` where `cOld.completedAt = T - 8 days` and
+  `addCompletion(cNew)` where `cNew.completedAt = T - 3 days`, when
+  `watchCompletionsSince(T - 7 days)` emits, the result contains only `cNew`.
+- `taskCompletionsStreamProvider` tested with `ProviderContainer`: stream emits
+  expected values.
+- No raw Firestore calls outside `TaskCompletionRepository`.
 
 ---
 
-### Task 2 — Tasks Repository & Provider
+### Task 3 — EnergyEngine pure functions
 
-**File:** `lib/features/goals/tasks_repository.dart`
+**File:** `lib/features/energy/energy_engine.dart`
 
-**`TasksRepository` interface:**
+A pure Dart file — **no Flutter imports, no Riverpod, no Firestore.** Only
+`dart:core` and the `TaskCompletion` model.
 
-| Method | Return type | Behavior |
-|---|---|---|
-| `watchTasks()` | `Stream<List<Task>>` | Real-time stream of all tasks for the user |
-| `watchTasksByParent(String parentId)` | `Stream<List<Task>>` | Stream filtered to one parent (goal or project) |
-| `addTask(Task task)` | `Future<void>` | Writes to `tasks/{task.id}` |
-| `updateTask(Task task)` | `Future<void>` | Overwrites `tasks/{task.id}` |
-| `deleteTask(String id)` | `Future<void>` | Deletes `tasks/{id}` |
+**Functions:**
 
-**Providers** (using `riverpod_annotation` / `@riverpod`):
-- `tasksRepositoryProvider` — provides `TasksRepository`
-- `tasksStreamProvider` — `StreamProvider<List<Task>>` consuming `watchTasks()`
+```dart
+// Returns the sum of energyScore for all completions whose completedAt
+// falls on the same UTC calendar date as `day`.
+int dailyPoints(List<TaskCompletion> completions, DateTime day);
 
-**Acceptance criteria** (tests use `fake_cloud_firestore`):
+// Returns the rolling 7-day average of daily points.
+// `history` should contain completions for exactly the 7 UTC calendar days
+// ending today (inclusive) — the caller is responsible for this window.
+// - If history spans fewer than 7 distinct days with any completions,
+//   average only the days that have at least one completion.
+// - If history is empty, return defaultBaseline.
+int energyBaseline(
+  List<TaskCompletion> history, {
+  int defaultBaseline = 80,
+});
+```
 
-- Given an empty collection, when `watchTasks()` emits, then the list is empty
-  (no error thrown).
-- Given `addTask(taskA)`, when the next `watchTasks()` snapshot emits, then the
-  list contains exactly `taskA` (full Freezed equality).
-- Given `addTask(taskA)` then `deleteTask(taskA.id)`, when the next snapshot
-  emits, then the list is empty.
-- Given `addTask(taskA)` then `updateTask(taskA.copyWith(title: "New"))`, when the
-  next snapshot emits, then `list[0].title == "New"`.
-- Given `addTask(taskA)` and `addTask(taskB)` where `taskA.parentId != taskB.parentId`,
-  when `watchTasksByParent(taskA.parentId)` emits, then only `taskA` is in the result.
-- Given a `Task` with `taskType: oneTime` and `weeklyQuota: null`, the add→watch
-  roundtrip preserves `weeklyQuota == null` (no coercion).
-- Given a `Task` with `taskType: recurring` and `weeklyQuota: 3`, the add→watch
-  roundtrip preserves `weeklyQuota == 3`.
-- `tasksStreamProvider` tested with `ProviderContainer`: overriding
-  `tasksRepositoryProvider` with a fake, the stream emits the expected values.
-- No raw Firestore calls outside of `TasksRepository`.
+**Acceptance criteria** (pure Dart unit tests — no Flutter test runner needed):
 
----
-
-### Task 3 — Contexts Repository & Provider
-
-**File:** `lib/shared/contexts_repository.dart`
-
-**`ContextsRepository` interface:**
-
-| Method | Return type | Behavior |
-|---|---|---|
-| `watchContexts()` | `Stream<List<Context>>` | Real-time stream of all contexts for the user |
-| `addContext(Context context)` | `Future<void>` | Writes to `contexts/{context.id}` |
-| `updateContext(Context context)` | `Future<void>` | Overwrites `contexts/{context.id}` |
-| `deleteContext(String id)` | `Future<void>` | Deletes `contexts/{id}` |
-
-**Providers** (using `riverpod_annotation` / `@riverpod`):
-- `contextsRepositoryProvider` — provides `ContextsRepository`
-- `contextsStreamProvider` — `StreamProvider<List<Context>>` consuming `watchContexts()`
-
-**Acceptance criteria** (tests use `fake_cloud_firestore`):
-
-- Given an empty collection, when `watchContexts()` emits, then the list is empty
-  (no error thrown).
-- Given `addContext(ctxA)`, when the next `watchContexts()` snapshot emits, then
-  the list contains exactly `ctxA` (full Freezed equality).
-- Given `addContext(ctxA)` then `deleteContext(ctxA.id)`, when the next snapshot
-  emits, then the list is empty.
-- Given `addContext(ctxA)` then `updateContext(ctxA.copyWith(name: "New"))`, when
-  the next snapshot emits, then `list[0].name == "New"`.
-- Given a `Context` with `colorHex: "FF6B35"`, the add→watch roundtrip preserves
-  the exact string `"FF6B35"` (no case mutation or `#` prefix added).
-- `contextsStreamProvider` tested with `ProviderContainer`: overriding
-  `contextsRepositoryProvider` with a fake, the stream emits the expected values.
-- No raw Firestore calls outside of `ContextsRepository`.
+- Given 7 days, each with completions totalling 100 pts, `energyBaseline` returns 100.
+- Given 3 days with completions totalling 80, 100, and 60 pts (in any order),
+  `energyBaseline` returns 80 (average of three days: (80+100+60)/3 = 80).
+- Given an empty list, `energyBaseline` returns `defaultBaseline` (80 by default).
+- Given `defaultBaseline: 60` passed explicitly, empty list returns 60.
+- Given completions on day D and day D+1, `dailyPoints(completions, D)` returns
+  only the sum for day D (day D+1 completions are excluded).
+- Given two completions on the same day with scores 30 and 50,
+  `dailyPoints` returns 80.
+- Given a `TaskCompletion` with `completedAt` at 23:59 UTC on day D and another
+  at 00:01 UTC on day D+1, `dailyPoints(completions, D)` returns only the first
+  score (UTC date boundary is respected).
 
 ---
 
-## Out of scope for Sprint 2
+### Task 4 — EnergyService provider
 
-- Any screen/widget UI
-- Authentication / real user IDs (continue using `"test_user"` hardcode)
-- Energy engine, triage, timer, CRM
-- Fixing the `flutter analyze` toolchain crash (environment issue, not app code)
+**File:** `lib/features/energy/energy_service.dart`
+
+**Provider:**
+
+```dart
+@riverpod
+Stream<int> energyBaseline(Ref ref);
+```
+
+Behavior:
+1. Watches `taskCompletionsStreamProvider` (live Firestore stream of all completions).
+2. Filters the emitted list to completions whose `completedAt` is within the last
+   7 UTC calendar days (today inclusive). Uses `DateTime.now().toUtc()` for "today."
+3. Passes the filtered list to `EnergyEngine.energyBaseline()`.
+4. Emits the resulting `int`.
+
+**Acceptance criteria** (tests use `ProviderContainer` + overridden providers):
+
+- Given `taskCompletionsStreamProvider` overridden to emit a list with 7 days of
+  100-pt completions, `energyBaselineProvider` emits 100.
+- Given the override emitting an empty list, `energyBaselineProvider` emits 80
+  (the default baseline).
+- Given the override emitting 3 days of data (80, 90, 100 pts), `energyBaselineProvider`
+  emits 90 (average: (80+90+100)/3 = 90).
+- Given the override emitting a mix of completions where some are older than 7 days,
+  `energyBaselineProvider` excludes the old ones from the average.
+
+---
+
+## Out of scope for Sprint 4
+
+- Energy tax (fixed event deductions) — deferred to Calendar sprint
+- Capacity warning UI — deferred to Calendar sprint
+- Task completion UI (marking a task done from a screen) — deferred to Goals UI sprint
+- `weeklyQuota` reset logic and rolling consistency ratios — Gamification sprint
+- Any screen or widget
 
 ---
 
 ## Approval
 
-- [ ] Human operator approved this sprint scope.
+- [x] Human operator approved this sprint scope. (2026-05-29)

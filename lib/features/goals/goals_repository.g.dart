@@ -49,7 +49,7 @@ final class GoalsRepositoryProvider
   }
 }
 
-String _$goalsRepositoryHash() => r'cb7be709955c7cc152770b6c5724d45b19301e11';
+String _$goalsRepositoryHash() => r'8e53a7160264c36448fab69810836fa76cc57d82';
 
 @ProviderFor(goalsStream)
 final goalsStreamProvider = GoalsStreamProvider._();
@@ -87,4 +87,4 @@ final class GoalsStreamProvider
   }
 }
 
-String _$goalsStreamHash() => r'18a9a80d349d9a56280c839342dbe1d7b7e96577';
+String _$goalsStreamHash() => r'28e240f9ac3ca97be8b62cc1d340003591cb2a79';

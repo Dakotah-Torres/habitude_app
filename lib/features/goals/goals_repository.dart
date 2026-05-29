@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:habitude/features/goals/goal.dart';
+import 'package:habitude/shared/auth_repository.dart';
 import 'package:habitude/shared/firestore_paths.dart';
 
 part 'goals_repository.g.dart';
@@ -42,8 +43,8 @@ class GoalsRepository {
 
 @riverpod
 GoalsRepository goalsRepository(Ref ref) {
-  // Hardcoded "test_user" as per Sprint 1 out-of-scope rules
-  return GoalsRepository(FirebaseFirestore.instance, uid: 'test_user');
+  final uid = ref.watch(currentUserIdProvider);
+  return GoalsRepository(FirebaseFirestore.instance, uid: uid);
 }
 
 @riverpod

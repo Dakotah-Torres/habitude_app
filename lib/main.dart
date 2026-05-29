@@ -1,6 +1,7 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:habitude/shared/auth_repository.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -15,7 +16,16 @@ void main() async {
     debugPrint('Firebase initialization failed: $e');
   }
 
-  runApp(const ProviderScope(child: MyApp()));
+  final container = ProviderContainer();
+  try {
+    await container.read(authRepositoryProvider).signInAnonymously();
+  } catch (e) {
+    // Rethrow as per Sprint 3 Task 3 criteria
+    debugPrint('Anonymous sign-in failed: $e');
+    rethrow;
+  }
+
+  runApp(UncontrolledProviderScope(container: container, child: const MyApp()));
 }
 
 class MyApp extends StatelessWidget {

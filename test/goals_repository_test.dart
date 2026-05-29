@@ -3,14 +3,19 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:habitude/features/goals/goal.dart';
 import 'package:habitude/features/goals/goals_repository.dart';
+import 'package:habitude/shared/auth_repository.dart';
+import 'helpers/auth_helper.dart';
 
 void main() {
   late FakeFirebaseFirestore fakeFirestore;
   late GoalsRepository repository;
-  const testUid = 'test_user';
+  late FakeAuthRepository fakeAuth;
+  const testUid = 'fake_uid';
 
   setUp(() {
     fakeFirestore = FakeFirebaseFirestore();
+    fakeAuth = FakeAuthRepository(initialUid: testUid);
+    addTearDown(fakeAuth.dispose);
     repository = GoalsRepository(fakeFirestore, uid: testUid);
   });
 
@@ -67,7 +72,10 @@ void main() {
     group('Providers', () {
       test('goalsStreamProvider emits values from repository', () async {
         final container = ProviderContainer(
-          overrides: [goalsRepositoryProvider.overrideWithValue(repository)],
+          overrides: [
+            authRepositoryProvider.overrideWithValue(fakeAuth),
+            goalsRepositoryProvider.overrideWithValue(repository),
+          ],
         );
         addTearDown(container.dispose);
 
@@ -92,7 +100,6 @@ void main() {
         await repository.addGoal(goal);
 
         // We need to wait for the stream to emit.
-        // Since it's a stream, we might need to wait a bit or use another read.
         goals = await container.read(goalsStreamProvider.future);
         expect(goals, hasLength(1));
         expect(goals.first.title, equals('Stream Test'));

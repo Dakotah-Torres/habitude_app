@@ -18,3 +18,21 @@
 [S1][Dev] Added Firebase credential files to .gitignore, confirmed stub usage, and tracked deferred debt in state.md. Tests pass. → Security
 [S1][Security] Re-reviewed post-fix: .gitignore entries confirmed, stub files contain no real credentials, all 4 deferred items properly tracked in state.md. No new findings. Clean approval. → PM
 [S1][PM] Sprint 1 closed. All 4 tasks verified against acceptance criteria. Pre-approved Flutter template deps as a class. Documented flutter analyze env issue. State.md updated. Sprint 2 scoped (Projects, Tasks, Contexts repos). Awaiting human approval. → Human
+[S2][PM] Sprint 2 approved by human operator. Handed to Dev. → Dev
+[S2][Designer] Confirmed Sprint 2 is non-UI; no design spec/review needed. → Dev
+[S2][Dev] Implemented Projects, Tasks, and Contexts repositories and providers. All tests pass against acceptance criteria. → Optimization
+[S2][Opt] Reviewed data-layer repositories/providers; no optimization fixes needed. dart analyze and flutter test pass; flutter analyze still blocked by local tool crash. → Security
+[S2][Security] Reviewed Sprint 2 repositories (Projects, Tasks, Contexts). No new vulnerabilities found. All known risks are pre-existing Sprint 1 tracked debt (hardcoded UID, no Firestore rules, .set() vs .update()). Clean approval. → PM
+[S2][PM] Sprint 2 closed. All 3 tasks verified (33 tests pass, dart analyze clean, Security clean). Signed off firebase_auth for Sprint 3. Scoped Sprint 3 (auth backbone: anonymous sign-in, UID wiring, Firestore rules). Awaiting human approval. → Human
+[S3][PM] Sprint 3 approved by human operator. Handed to Dev. → Dev
+[S3][Designer] Confirmed Sprint 3 is non-UI; no design spec/review needed. → Dev
+[S3][Dev] Implemented AuthRepository, wired UID to repositories, bootstrapped anonymous sign-in, and added Firestore rules. Tests pass. → Optimization
+[S3][Opt] Reviewed auth backbone and rules, formatted touched Dart files, tightened FakeAuthRepository stream/disposal tests. dart analyze and flutter test pass; flutter analyze still blocked by local tool crash. → Security
+[S3][Security] Reviewed Sprint 3 auth backbone. Both HIGH blockers resolved (test_user removed, Firestore rules shipped). Two LOW tracking items added (currentUserIdProvider staleness pre-sign-out; stale Sprint 1 comment in main.dart). Clean approval. → PM
+[S3][PM] Sprint 3 closed. All 4 tasks verified (39 tests pass, dart analyze clean, both HIGH blockers resolved). Two LOW items added to open/deferred. Sprint 4 scoped (TaskCompletion model + EnergyEngine). Awaiting human approval. → Human
+[S4][Designer] Confirmed Sprint 4 is non-UI and still awaiting human approval; no design spec/review needed. → Human
+[S4][PM] Sprint 4 approved by human operator. Handed to Dev. → Dev
+[S4][Dev] Implemented TaskCompletion model/repo and EnergyEngine/Service. All tests pass (54 total). → Optimization
+[S4][Dev] Verified Sprint 4 implementation and emitted handoff. → Optimization
+[S4][Opt] Reviewed TaskCompletion and EnergyEngine, fixed EnergyService live updates, added service acceptance coverage. dart analyze and flutter test pass; flutter analyze still blocked by local tool crash. → Security
+[S4][Security] Reviewed Sprint 4 data layer and energy engine. Firestore rules already cover task_completions via recursive wildcard. One LOW tracking item: completedAt ISO string comparison requires UTC normalization at call site before UI sprint. Clean approval. → PM
