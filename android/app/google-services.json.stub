@@ -1,0 +1,24 @@
+// DO NOT COMMIT REAL CREDENTIALS
+{
+  "project_info": {
+    "project_number": "1234567890",
+    "project_id": "habitude-stub",
+    "storage_bucket": "habitude-stub.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1234567890:android:abc123456",
+        "android_client_info": {
+          "package_name": "com.habitude.habitude"
+        }
+      },
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
