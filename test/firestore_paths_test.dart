@@ -8,5 +8,6 @@ void main() {
     expect(FirestorePaths.projects(uid), equals('users/abc123/projects'));
     expect(FirestorePaths.tasks(uid), equals('users/abc123/tasks'));
     expect(FirestorePaths.contexts(uid), equals('users/abc123/contexts'));
+    expect(FirestorePaths.trackers(uid), equals('users/abc123/trackers'));
   });
 }

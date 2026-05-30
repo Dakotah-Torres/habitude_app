@@ -49,3 +49,8 @@
 [S5][Dev] Implemented actual cascade deletion for Goals and Projects. Resolved Security finding 1. All tests pass (75 total). → Optimization
 [S5][Opt] Reviewed cascade-delete fix, formatted touched files, and approved. dart analyze and flutter test pass; flutter analyze still blocked by local tool crash. → Security
 [S5][PM] Sprint 5 closed. 75 tests pass, cascade-delete MEDIUM resolved, one new LOW item (non-atomic cascades). state.md updated. Sprint 6 scoped (Timer Core: Tracker model, TimerNotifier, shared_preferences persistence). Awaiting human approval. → Human
+[S6][PM] Sprint 6 approved by human operator. Handed to Dev. → Dev
+[S6][Designer] Confirmed Sprint 6 is non-UI; no design spec/review needed. → Dev
+[S6][Dev] Implemented Timer Core: Tracker model/repo, TimerState, and TimerNotifier with persistence. All tests pass (92 total). → Optimization
+[S6][Opt] Reviewed Timer Core, fixed resume persistence/provider disposal/provider naming, added coverage. dart analyze and flutter test pass; flutter analyze still blocked by local tool crash. → Security
+[S6][Security] Reviewed Sprint 6 Timer Core. No vulnerabilities. Firestore rules already cover trackers via recursive wildcard. UTC compliance confirmed. Two LOW tracking items (unguarded DateTime.parse in reconcile; force-unwrap startedAt in stopTimer). Clean approval. → PM

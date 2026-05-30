@@ -6,9 +6,9 @@
 
 ## Current sprint
 
-**Sprint 6** — Timer Core: `Tracker` model, `TrackerRepository`, `TimerState`,
-and `TimerNotifier` (Riverpod state machine with shared_preferences persistence).
-Non-UI sprint. See `truth/sprint.md`. Status: **awaiting human approval (2026-05-29).**
+**Sprint 7** — Timer UI + Overtime Mechanic + Dead-Man's Switch.
+UI sprint — Designer pre-specs before Dev builds.
+See `truth/sprint.md`. Status: **awaiting human approval (2026-05-30).**
 
 ## Locked decisions
 
@@ -73,7 +73,7 @@ contain no behavior beyond bundled assets. (Ruling 2026-05-29, Sprint 1 close.)
 ### [S1 close] Environment — flutter analyze toolchain crash
 
 `flutter analyze` crashed on the dev machine (missing analysis server snapshot)
-throughout Sprints 1–5. This is a machine/environment issue, not an app-code
+throughout Sprints 1–6. This is a machine/environment issue, not an app-code
 issue. `dart analyze` passed cleanly and was accepted as the verification
 substitute. The human operator should run:
 ```
@@ -107,65 +107,72 @@ All four tasks delivered, tests passing, Security-approved.
 All three tasks delivered, 33 tests passing, Security-approved.
 
 - **ProjectsRepository:** `watchProjects()`, `watchProjectsByGoal()`, CRUD.
-- **TasksRepository:** `watchTasks()`, `watchTasksByParent()`, CRUD. `weeklyQuota` roundtrip verified.
-- **ContextsRepository:** `watchContexts()`, CRUD. `colorHex` string preservation verified.
+- **TasksRepository:** `watchTasks()`, `watchTasksByParent()`, CRUD.
+- **ContextsRepository:** `watchContexts()`, CRUD. `colorHex` preservation verified.
 
 ### Sprint 3 — Authentication Backbone (closed 2026-05-29)
 
 All four tasks delivered, 39 tests passing, Security-approved. Both HIGH blockers resolved.
 
-- **AuthRepository:** Anonymous sign-in, `currentUserId`, `authStateChanges`. `FakeAuthRepository` for tests.
-- **UID wiring:** `"test_user"` removed from all repositories. `currentUserIdProvider` wired in.
-- **Anonymous sign-in bootstrap:** `main.dart` calls `signInAnonymously()` before `runApp()`; errors rethrown.
-- **Firestore rules:** Ownership rule for `users/{userId}/{document=**}`. Default deny.
+- **AuthRepository + anonymous sign-in + UID wiring + Firestore rules.**
 
 ### Sprint 4 — Task Completion Tracking + Energy Budgeting Engine (closed 2026-05-29)
 
 All four tasks delivered, 57 tests passing, Security-approved.
 
-- **TaskCompletion model:** Freezed + JSON roundtrip. `FirestorePaths.taskCompletions(uid)` added.
-- **TaskCompletionRepository:** `watchCompletions()`, `watchCompletionsSince()`, `addCompletion()`, `deleteCompletion()`.
-- **EnergyEngine:** Pure Dart. `dailyPoints()` + `energyBaseline()` (rolling 7-day avg, default 80).
-- **EnergyService:** `energyBaselineProvider` (`StreamProvider<int>`). Live baseline from Firestore.
+- **TaskCompletion model + repository. EnergyEngine (pure Dart). EnergyService provider.**
 
 ### Sprint 5 — Goals Hierarchy UI (closed 2026-05-29)
 
-All six screens delivered, 75 tests passing, Security-approved. Full UI sprint loop ran (Designer pre-spec → Dev → Designer review → Optimization → Security → fix → re-review).
+Six screens delivered, 75 tests passing, Security-approved (cascade-delete MEDIUM fixed).
 
-- **Sedona Sunset theme:** `lib/shared/theme.dart` — Material 3 palette and typography.
-- **GoalsListScreen:** Goals list, empty/loading/error states, FAB, navigation.
-- **GoalFormScreen:** Create/edit Goal. Inline save-error messages. Validation.
-- **GoalDetailScreen:** Goal header + Projects list. Cascade delete (projects + tasks). 720 px wide-layout cap.
-- **ProjectFormScreen:** Create/edit Project. Status labels: Active / Completed / Archived.
-- **ProjectDetailScreen:** Project header + Tasks list. Overflow menu (Edit/Delete) with confirmation. Cascade delete (tasks). Loading/error panels keep header visible.
-- **TaskFormScreen:** Create/edit Task. `weeklyQuota` field toggles with `taskType`. Inline save errors.
-- **watchById() providers** added to Goals, Projects, Tasks repositories for detail-screen streams.
-- **Cascade delete:** Client-side sequential cascade with loading overlay and context.mounted guards.
+- **Sedona Sunset theme. GoalsListScreen, GoalFormScreen, GoalDetailScreen,
+  ProjectFormScreen, ProjectDetailScreen, TaskFormScreen.**
+- **Cascade delete** for goals (→ projects → tasks) and projects (→ tasks).
+- **watchById providers** added to repositories for detail screens.
+
+### Sprint 6 — Timer Core (closed 2026-05-30)
+
+All four tasks delivered, 93 tests passing, Security-approved.
+
+- **Tracker model:** Freezed + JSON roundtrip. `stoppedAt: null` preserved.
+  `FirestorePaths.trackers(uid)` added.
+  File: `lib/features/timer/tracker.dart`.
+- **TrackerRepository:** `watchTrackers()`, `watchTrackersByTask()`, `addTracker()`,
+  `updateTracker()`. No delete — history is permanent.
+  File: `lib/features/timer/tracker_repository.dart`.
+- **TimerState:** Ephemeral Freezed value object (NOT Firestore-persisted).
+  `TimerStatus` enum: idle | running | paused.
+  File: `lib/features/timer/timer_state.dart`.
+- **TimerNotifier:** `startTimer()`, `pauseTimer()`, `resumeTimer()`, `stopTimer()`,
+  `reconcile()`. Pure helpers: `computeElapsed()`, `isComplete()`.
+  On stop: updates Tracker + creates TaskCompletion (both UTC).
+  On build/reconcile: restores in-progress timer from shared_preferences.
+  Optimization fixes: `timerNotifierProvider` naming, `ref.onDispose` cancels
+  timer, resume rewrites `timer_started_at` to exclude paused wall-clock time.
+  File: `lib/features/timer/timer_notifier.dart`.
 
 ## Open / deferred
 
 > Known issues, parked ideas, things to revisit.
 
-- **[MEDIUM]** Improve Firebase initialization error handling in `main.dart`
-  for production (avoid silent failure on `Firebase.initializeApp()`).
-- **[LOW]** Refactor all repository `update*()` methods to use `.update()` instead
-  of `.set()` to preserve server-side fields.
-- **[LOW — pre-sign-out]** `currentUserIdProvider` does not watch `authStateChanges`;
-  will hold stale UID if sign-out/session expiry is added. Must fix before any
-  sign-out sprint. File: `lib/shared/auth_repository.dart`.
-- **[LOW]** Stale `"as per sprint scope (empty shell)"` comment in `main.dart:9-15`.
-- **[LOW — must fix when task-completion UI is built]** `completedAt` stored as ISO
-  8601 string with no enforced UTC normalization in `TaskCompletionRepository`.
-  All call sites must use `DateTime.now().toUtc()`. Enforced in Sprint 5 screens;
-  must remain enforced in Sprint 6 TimerNotifier.
-  File: `lib/features/energy/task_completion_repository.dart:29`.
-- **[LOW — pre-deployment]** Client-side cascade deletes (Goal → Projects → Tasks;
-  Project → Tasks) are sequential and non-atomic. A network drop mid-cascade
-  leaves partial state. Before multi-user or paid-tier deployment, switch to
-  Firestore batched writes (≤500 ops/batch) or Cloud Functions for atomic
-  server-side enforcement.
-  Files: `lib/features/goals/screens/goal_detail_screen.dart`,
-  `lib/features/goals/screens/project_detail_screen.dart`.
+- **[MEDIUM]** Improve Firebase initialization error handling in `main.dart`.
+- **[LOW]** Refactor repository `update*()` to use `.update()` instead of `.set()`.
+- **[LOW — pre-sign-out]** `currentUserIdProvider` does not watch `authStateChanges`.
+  File: `lib/shared/auth_repository.dart`.
+- **[LOW]** Stale comment in `main.dart:9-15`.
+- **[LOW — must fix at every TaskCompletion call site]** `completedAt` must always
+  use `DateTime.now().toUtc()`. Enforced in Sprints 5–6; must remain enforced in
+  Sprint 7 TimerNotifier extensions.
+- **[LOW — pre-deployment]** Client-side cascade deletes are non-atomic.
+  Switch to batched writes before multi-user deployment.
+- **[LOW]** `reconcile()` — unguarded `DateTime.parse` at
+  `lib/features/timer/timer_notifier.dart:46`. Wrap in try/catch; on parse failure
+  reset to idle and clear all timer prefs keys.
+- **[LOW]** `stopTimer()` — force-unwrap `state.startedAt!` at
+  `lib/features/timer/timer_notifier.dart:155`. Guard is implicit via taskId/trackerId
+  non-null check but not enforced by the type system. Address when TimerState is
+  tightened to a sealed class.
 
 ## Tie-breaker rulings
 
