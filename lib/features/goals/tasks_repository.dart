@@ -33,6 +33,14 @@ class TasksRepository {
         );
   }
 
+  Stream<Task> watchTask(String id) {
+    return _firestore
+        .collection(FirestorePaths.tasks(_uid))
+        .doc(id)
+        .snapshots()
+        .map((doc) => Task.fromJson(doc.data()!));
+  }
+
   Future<void> addTask(Task task) {
     return _firestore
         .collection(FirestorePaths.tasks(_uid))
@@ -62,4 +70,16 @@ TasksRepository tasksRepository(Ref ref) {
 Stream<List<Task>> tasksStream(Ref ref) {
   final repository = ref.watch(tasksRepositoryProvider);
   return repository.watchTasks();
+}
+
+@riverpod
+Stream<List<Task>> tasksByParentStream(Ref ref, String parentId) {
+  final repository = ref.watch(tasksRepositoryProvider);
+  return repository.watchTasksByParent(parentId);
+}
+
+@riverpod
+Stream<Task> taskStream(Ref ref, String id) {
+  final repository = ref.watch(tasksRepositoryProvider);
+  return repository.watchTask(id);
 }

@@ -6,9 +6,9 @@
 
 ## Current sprint
 
-**Sprint 4** — Task Completion Tracking + Energy Budgeting Engine: `TaskCompletion`
-model, completion repository, pure `EnergyEngine` logic, and a live baseline provider.
-See `truth/sprint.md`. Status: **approved 2026-05-29 — Dev active.**
+**Sprint 6** — Timer Core: `Tracker` model, `TrackerRepository`, `TimerState`,
+and `TimerNotifier` (Riverpod state machine with shared_preferences persistence).
+Non-UI sprint. See `truth/sprint.md`. Status: **awaiting human approval (2026-05-29).**
 
 ## Locked decisions
 
@@ -73,7 +73,7 @@ contain no behavior beyond bundled assets. (Ruling 2026-05-29, Sprint 1 close.)
 ### [S1 close] Environment — flutter analyze toolchain crash
 
 `flutter analyze` crashed on the dev machine (missing analysis server snapshot)
-throughout Sprints 1–3. This is a machine/environment issue, not an app-code
+throughout Sprints 1–5. This is a machine/environment issue, not an app-code
 issue. `dart analyze` passed cleanly and was accepted as the verification
 substitute. The human operator should run:
 ```
@@ -87,8 +87,7 @@ flutter upgrade --force
 ### [S3 close] firebase_auth signed off
 
 `firebase_auth` (latest stable) added as a runtime dependency for Sprint 3.
-Anonymous auth strategy chosen; real sign-in methods deferred to a later UI sprint.
-See Sprint 3 section under Completed for full reasoning.
+Anonymous auth strategy chosen; real sign-in methods deferred to Sprint 14.
 
 ## Completed
 
@@ -98,44 +97,50 @@ See Sprint 3 section under Completed for full reasoning.
 
 All four tasks delivered, tests passing, Security-approved.
 
-- **Project scaffold:** Feature-first folder structure in place. All Job Zero
-  packages pinned in `pubspec.yaml`. `flutter test` passes; `dart analyze` clean.
-- **Core domain models:** `Goal`, `Project`, `Task`, `Context` as Freezed value
-  objects with JSON roundtrip. Enums co-located. All model unit tests pass.
-- **Firebase setup:** `firebase_core` initialized in `main.dart`. `FirestorePaths`
-  abstract class in `lib/shared/firestore_paths.dart` with unit tests. Placeholder
-  credential stubs in place; real credentials are `.gitignore`-protected.
-- **Goals Riverpod provider:** `GoalsRepository` CRUD + stream providers. Tested
-  with `fake_cloud_firestore`.
+- **Project scaffold:** Feature-first folder structure. All Job Zero packages pinned.
+- **Core domain models:** `Goal`, `Project`, `Task`, `Context` — Freezed + JSON roundtrip.
+- **Firebase setup:** `firebase_core` in `main.dart`. `FirestorePaths`. Credential stubs + `.gitignore`.
+- **Goals Riverpod provider:** CRUD + stream providers. Tested with `fake_cloud_firestore`.
 
 ### Sprint 2 — Data Layer Completion (closed 2026-05-29)
 
-All three tasks delivered, 33 tests passing, Security-approved (no new findings).
+All three tasks delivered, 33 tests passing, Security-approved.
 
 - **ProjectsRepository:** `watchProjects()`, `watchProjectsByGoal()`, CRUD.
-  File: `lib/features/goals/projects_repository.dart`.
-- **TasksRepository:** `watchTasks()`, `watchTasksByParent()`, CRUD. `weeklyQuota`
-  null/value roundtrip verified. File: `lib/features/goals/tasks_repository.dart`.
-- **ContextsRepository:** `watchContexts()`, CRUD. `colorHex` string preservation
-  verified. File: `lib/shared/contexts_repository.dart`.
+- **TasksRepository:** `watchTasks()`, `watchTasksByParent()`, CRUD. `weeklyQuota` roundtrip verified.
+- **ContextsRepository:** `watchContexts()`, CRUD. `colorHex` string preservation verified.
 
 ### Sprint 3 — Authentication Backbone (closed 2026-05-29)
 
-All four tasks delivered, 39 tests passing, Security-approved. Both HIGH
-pre-deployment blockers from Sprints 1–2 resolved.
+All four tasks delivered, 39 tests passing, Security-approved. Both HIGH blockers resolved.
 
-- **AuthRepository:** Abstract class + `FirebaseAuthRepository`. `signInAnonymously()`,
-  `currentUserId` (throws `StateError('not_signed_in')` if unauthenticated),
-  `authStateChanges`. `authRepositoryProvider` + `currentUserIdProvider`.
-  `FakeAuthRepository` in `test/helpers/auth_helper.dart`.
-  File: `lib/shared/auth_repository.dart`.
-- **UID wiring:** Hardcoded `"test_user"` removed from all 4 repositories. All read
-  from `currentUserIdProvider`. Confirmed by `rg` scan: zero matches in `lib/`.
-- **Anonymous sign-in bootstrap:** `main.dart` calls `signInAnonymously()` before
-  `runApp()`; errors are rethrown (not swallowed).
-- **Firestore rules:** `firestore.rules` and `firestore.indexes.json` at repo root.
-  Ownership rule: `request.auth != null && request.auth.uid == userId` for
-  `users/{userId}/{document=**}`. Default deny on all other paths.
+- **AuthRepository:** Anonymous sign-in, `currentUserId`, `authStateChanges`. `FakeAuthRepository` for tests.
+- **UID wiring:** `"test_user"` removed from all repositories. `currentUserIdProvider` wired in.
+- **Anonymous sign-in bootstrap:** `main.dart` calls `signInAnonymously()` before `runApp()`; errors rethrown.
+- **Firestore rules:** Ownership rule for `users/{userId}/{document=**}`. Default deny.
+
+### Sprint 4 — Task Completion Tracking + Energy Budgeting Engine (closed 2026-05-29)
+
+All four tasks delivered, 57 tests passing, Security-approved.
+
+- **TaskCompletion model:** Freezed + JSON roundtrip. `FirestorePaths.taskCompletions(uid)` added.
+- **TaskCompletionRepository:** `watchCompletions()`, `watchCompletionsSince()`, `addCompletion()`, `deleteCompletion()`.
+- **EnergyEngine:** Pure Dart. `dailyPoints()` + `energyBaseline()` (rolling 7-day avg, default 80).
+- **EnergyService:** `energyBaselineProvider` (`StreamProvider<int>`). Live baseline from Firestore.
+
+### Sprint 5 — Goals Hierarchy UI (closed 2026-05-29)
+
+All six screens delivered, 75 tests passing, Security-approved. Full UI sprint loop ran (Designer pre-spec → Dev → Designer review → Optimization → Security → fix → re-review).
+
+- **Sedona Sunset theme:** `lib/shared/theme.dart` — Material 3 palette and typography.
+- **GoalsListScreen:** Goals list, empty/loading/error states, FAB, navigation.
+- **GoalFormScreen:** Create/edit Goal. Inline save-error messages. Validation.
+- **GoalDetailScreen:** Goal header + Projects list. Cascade delete (projects + tasks). 720 px wide-layout cap.
+- **ProjectFormScreen:** Create/edit Project. Status labels: Active / Completed / Archived.
+- **ProjectDetailScreen:** Project header + Tasks list. Overflow menu (Edit/Delete) with confirmation. Cascade delete (tasks). Loading/error panels keep header visible.
+- **TaskFormScreen:** Create/edit Task. `weeklyQuota` field toggles with `taskType`. Inline save errors.
+- **watchById() providers** added to Goals, Projects, Tasks repositories for detail-screen streams.
+- **Cascade delete:** Client-side sequential cascade with loading overlay and context.mounted guards.
 
 ## Open / deferred
 
@@ -146,11 +151,21 @@ pre-deployment blockers from Sprints 1–2 resolved.
 - **[LOW]** Refactor all repository `update*()` methods to use `.update()` instead
   of `.set()` to preserve server-side fields.
 - **[LOW — pre-sign-out]** `currentUserIdProvider` does not watch `authStateChanges`;
-  will hold a stale UID if sign-out or session expiry is ever added. Must be
-  addressed before any sprint that introduces sign-out or account linking.
-  File: `lib/shared/auth_repository.dart` (currentUserIdProvider definition).
-- **[LOW]** Stale `"as per sprint scope (empty shell)"` comment in `main.dart:9-15`
-  around the Firebase init catch block. Misleading after Sprint 3 updates.
+  will hold stale UID if sign-out/session expiry is added. Must fix before any
+  sign-out sprint. File: `lib/shared/auth_repository.dart`.
+- **[LOW]** Stale `"as per sprint scope (empty shell)"` comment in `main.dart:9-15`.
+- **[LOW — must fix when task-completion UI is built]** `completedAt` stored as ISO
+  8601 string with no enforced UTC normalization in `TaskCompletionRepository`.
+  All call sites must use `DateTime.now().toUtc()`. Enforced in Sprint 5 screens;
+  must remain enforced in Sprint 6 TimerNotifier.
+  File: `lib/features/energy/task_completion_repository.dart:29`.
+- **[LOW — pre-deployment]** Client-side cascade deletes (Goal → Projects → Tasks;
+  Project → Tasks) are sequential and non-atomic. A network drop mid-cascade
+  leaves partial state. Before multi-user or paid-tier deployment, switch to
+  Firestore batched writes (≤500 ops/batch) or Cloud Functions for atomic
+  server-side enforcement.
+  Files: `lib/features/goals/screens/goal_detail_screen.dart`,
+  `lib/features/goals/screens/project_detail_screen.dart`.
 
 ## Tie-breaker rulings
 

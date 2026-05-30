@@ -22,6 +22,14 @@ class GoalsRepository {
         );
   }
 
+  Stream<Goal> watchGoal(String id) {
+    return _firestore
+        .collection(FirestorePaths.goals(_uid))
+        .doc(id)
+        .snapshots()
+        .map((doc) => Goal.fromJson(doc.data()!));
+  }
+
   Future<void> addGoal(Goal goal) {
     return _firestore
         .collection(FirestorePaths.goals(_uid))
@@ -51,4 +59,10 @@ GoalsRepository goalsRepository(Ref ref) {
 Stream<List<Goal>> goalsStream(Ref ref) {
   final repository = ref.watch(goalsRepositoryProvider);
   return repository.watchGoals();
+}
+
+@riverpod
+Stream<Goal> goalStream(Ref ref, String id) {
+  final repository = ref.watch(goalsRepositoryProvider);
+  return repository.watchGoal(id);
 }

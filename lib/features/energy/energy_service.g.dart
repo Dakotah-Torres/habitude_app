@@ -40,4 +40,4 @@ final class EnergyBaselineProvider
   }
 }
 
-String _$energyBaselineHash() => r'2aa92b535cf1eb712185f736fac0330243d2806c';
+String _$energyBaselineHash() => r'f309700790f5f11bd0b365fd5472ccffe3e8751c';

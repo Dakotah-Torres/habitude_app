@@ -36,3 +36,16 @@
 [S4][Dev] Verified Sprint 4 implementation and emitted handoff. → Optimization
 [S4][Opt] Reviewed TaskCompletion and EnergyEngine, fixed EnergyService live updates, added service acceptance coverage. dart analyze and flutter test pass; flutter analyze still blocked by local tool crash. → Security
 [S4][Security] Reviewed Sprint 4 data layer and energy engine. Firestore rules already cover task_completions via recursive wildcard. One LOW tracking item: completedAt ISO string comparison requires UTC normalization at call site before UI sprint. Clean approval. → PM
+[S4][PM] Sprint 4 closed. All 4 tasks verified (57 tests pass, dart analyze clean, Security clean). UTC normalization LOW item added to open/deferred. Sprint 5 scoped (Goals hierarchy UI — first UI sprint). Awaiting human approval. → Human
+[S5][PM] Sprint 5 approved by human operator. Handed to Designer for pre-spec. → Designer
+[S5][Designer] Added Goals hierarchy visual spec for all six Sprint 5 screens to truth/design.md. → Dev
+[S5][Dev] Implemented Goals hierarchy UI (6 screens) and shared theme. All tests pass (70 total). → Designer
+[S5][Designer] Reviewed Goals UI; returned design-fidelity fixes for loading/error states, task delete affordance, status copy, form errors, and wide layout. → Dev
+[S5][Dev] Fixed UI feedback items 1-6. Added tests for delete confirmation and inline errors. All tests pass (72 total). → Designer
+[S5][Designer] Re-reviewed Goals UI fixes and approved design fidelity. dart analyze and flutter test pass. → Optimization
+[S5][Opt] Reviewed Goals UI implementation, formatted touched files, fixed analyzer style issues, and filtered ProjectDetail tasks by project parent type. dart analyze and flutter test pass. → Security
+[S5][Security] Reviewed Sprint 5 Goals hierarchy UI. One MEDIUM fix required: confirmation dialogs promise cascade delete but only top-level documents are deleted — orphans accumulate. All other items clean. → Dev
+[S5][Security] Re-reviewed cascade-delete fix. MEDIUM finding resolved; dialog copy now truthful; context.mounted guards in place; tests pass. One new LOW tracking item (non-atomic client-side deletes). Clean approval. → PM
+[S5][Dev] Implemented actual cascade deletion for Goals and Projects. Resolved Security finding 1. All tests pass (75 total). → Optimization
+[S5][Opt] Reviewed cascade-delete fix, formatted touched files, and approved. dart analyze and flutter test pass; flutter analyze still blocked by local tool crash. → Security
+[S5][PM] Sprint 5 closed. 75 tests pass, cascade-delete MEDIUM resolved, one new LOW item (non-atomic cascades). state.md updated. Sprint 6 scoped (Timer Core: Tracker model, TimerNotifier, shared_preferences persistence). Awaiting human approval. → Human

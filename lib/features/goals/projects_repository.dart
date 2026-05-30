@@ -33,6 +33,14 @@ class ProjectsRepository {
         );
   }
 
+  Stream<Project> watchProject(String id) {
+    return _firestore
+        .collection(FirestorePaths.projects(_uid))
+        .doc(id)
+        .snapshots()
+        .map((doc) => Project.fromJson(doc.data()!));
+  }
+
   Future<void> addProject(Project project) {
     return _firestore
         .collection(FirestorePaths.projects(_uid))
@@ -65,4 +73,16 @@ ProjectsRepository projectsRepository(Ref ref) {
 Stream<List<Project>> projectsStream(Ref ref) {
   final repository = ref.watch(projectsRepositoryProvider);
   return repository.watchProjects();
+}
+
+@riverpod
+Stream<List<Project>> projectsByGoalStream(Ref ref, String goalId) {
+  final repository = ref.watch(projectsRepositoryProvider);
+  return repository.watchProjectsByGoal(goalId);
+}
+
+@riverpod
+Stream<Project> projectStream(Ref ref, String id) {
+  final repository = ref.watch(projectsRepositoryProvider);
+  return repository.watchProject(id);
 }

@@ -143,3 +143,336 @@ first UI sprint, the PM must record approval of `google_fonts` in `state.md`
 (or the Designer/Dev must bundle the font files locally instead). A user-selectable
 color wheel will also need a picker package (e.g. `flutter_colorpicker`) — same
 rule: PM-approve before use.
+
+---
+
+## Sprint 5 visual spec — Goals hierarchy UI
+
+Sprint 5 builds the first real app surface: Goals -> Projects -> Tasks. Keep the
+experience quiet, scannable, and forgiving. Use Material 3 components and the
+existing theme/tokens; do not add packages for fonts, routing, icons, or date
+pickers unless PM records sign-off in `truth/state.md`.
+
+### Shared screen structure
+
+- Use `Scaffold` with a calm light background derived from the app surface color.
+  App bars are simple and flat, with `juniper`-weighted title treatment and no
+  decorative gradients.
+- Each list/detail screen uses one primary action: a FAB for create actions. The
+  FAB uses the primary/action color (`ember` when tokenized; otherwise
+  `Theme.of(context).colorScheme.primary`) and a `+`/add icon.
+- Content width is full on phones with 16 px horizontal padding. On wide screens,
+  constrain primary content to a readable max width around 720 px and center it.
+- Use cards only for repeated list rows or form groups. Cards should be low
+  elevation or elevation 0 with a visible outline/tinted surface. Radius should be
+  modest, 8 px.
+- Loading states use centered `CircularProgressIndicator` plus a short neutral
+  label: "Loading goals", "Loading projects", or "Loading tasks". No skeleton
+  shimmer this sprint.
+- Error states use an inline calm error panel with title "Something did not load",
+  the error text in smaller body copy when available, and a retry affordance only
+  if the provider can be invalidated locally. Do not crash or show raw stack traces.
+- Empty states are supportive, not shaming. Use simple centered content with an
+  icon, a short title, one sentence, and the same create action as the FAB.
+- Destructive actions always require confirmation in an `AlertDialog`. The dialog
+  must name the item being deleted, explain that this removes the item from this
+  hierarchy level, and provide `Cancel` plus a clearly labeled destructive action
+  (`Delete goal`, `Delete project`, `Delete task`). No single-tap delete.
+- Prefer trailing overflow menus (`PopupMenuButton`) for edit/delete on cards and
+  details. Long-press can open the same menu or confirmation, but must not be the
+  only way to act.
+- Avoid shame-coded red for ordinary deletion confirmation. If Material error color
+  is used for the final delete button, keep the rest of the dialog neutral.
+- All text must respect system text scaling and wrap before overflow. Titles in
+  lists are max 2 lines with ellipsis; detail headers can wrap to 3 lines.
+
+### Shared visual language
+
+- Goal type chips:
+  - `continuous`: calm growth chip, label "Continuous", saguaro-tinted container.
+  - `finite`: structured milestone chip, label "Finite", mesaSky-tinted container.
+- Project status badges must be visually distinct:
+  - `active`: ember-tinted badge, label "Active". This is the only routine status
+    allowed to use action energy because it indicates current momentum.
+  - `completed`: saguaro-tinted badge, label "Completed".
+  - `archived`: neutral/mesaSky-muted badge, label "Archived".
+- Task type chips:
+  - `oneTime`: label "One-time".
+  - `recurring`: label "Recurring".
+- Energy score display:
+  - Show as a compact effort indicator: icon or prefix plus "`N` energy".
+  - Higher means harder, not worse. Use neutral copy such as "40 energy", never
+    "cost", "penalty", or "too much".
+  - Use tabular figures when a theme style exists for numeric data.
+- Dates:
+  - `createdAt` is not shown in Sprint 5 unless needed for debugging; keep UI
+    focused on user-authored titles and hierarchy.
+  - Project `dueDate` displays as "Due MMM d" when present and is omitted when null.
+  - Date input can use Flutter's built-in `showDatePicker`; no date picker package.
+- Forms:
+  - Put primary form content in a single column with 16 px gaps.
+  - Save button is the primary filled action. Cancel is a text button.
+  - Validation copy is direct and gentle: "Add a title to save this goal."
+  - Disable or show progress on Save while writes are in flight to prevent duplicate
+    submissions.
+
+### `GoalsListScreen` (`/goals`, root/home)
+
+**Layout**
+- `Scaffold` with app bar title "Habitude".
+- Body is an `AsyncValue` view of `goalsStreamProvider`.
+- When data exists, show a `ListView.separated` of goal cards. Each card has the
+  goal title, a goal type chip, and a trailing chevron. Cards are tappable.
+- FAB in lower-right creates a new goal.
+
+**Data shown**
+- `Goal.title`: primary text, max 2 lines, ellipsis in lists.
+- `Goal.type`: chip using shared goal type styling.
+- Do not show goal IDs or raw timestamps.
+
+**User actions**
+- Tap goal card: open `GoalDetailScreen`.
+- Tap FAB or empty-state action: open `GoalFormScreen` in create mode.
+- Optional trailing overflow may expose Edit/Delete once Dev has the form wired,
+  but primary Sprint 5 delete requirement is on detail.
+
+**Empty state**
+- Title: "Start with one goal."
+- Body: "Name the direction you want your effort to point."
+- Action: "Add goal" opens create form.
+
+**Loading state**
+- Centered progress indicator with "Loading goals".
+
+**Error state**
+- Calm error panel: "Something did not load" and "Your goals are still safe. Try
+  again in a moment." Include technical error text only as small secondary text.
+
+**Navigation**
+- FAB/empty action -> `GoalFormScreen(create)`.
+- Goal tap -> `GoalDetailScreen(goal)`.
+
+### `GoalFormScreen` (`/goals/new`, `/goals/:id/edit`)
+
+**Layout**
+- App bar title is "New goal" in create mode and "Edit goal" in edit mode.
+- Body is a single form column: title field, type segmented control/radio group,
+  bottom action row.
+- Use `TextFormField` for title and `SegmentedButton<GoalType>` or accessible
+  radio tiles for type.
+
+**Data shown**
+- Create mode starts with empty title and default `GoalType.continuous`.
+- Edit mode pre-populates `Goal.title` and `Goal.type`.
+- Type labels: "Continuous" and "Finite". Optional helper text may explain:
+  "Continuous supports ongoing effort" and "Finite has a finish line."
+
+**User actions**
+- Save validates title is non-empty after trim, then calls add/update.
+- Cancel pops without saving.
+- System back behaves like Cancel if there are no submitted writes.
+
+**Empty state**
+- Not applicable; this is a form.
+
+**Loading state**
+- During save, keep form visible, disable fields/actions, and show progress in the
+  Save button area.
+
+**Error state**
+- Field validation: "Add a title to save this goal."
+- Save failure: inline message above actions, "Goal was not saved. Nothing was
+  lost; try again."
+
+**Navigation**
+- Successful save -> `Navigator.pop`.
+- Cancel/back -> `Navigator.pop`.
+
+### `GoalDetailScreen` (`/goals/:id`)
+
+**Layout**
+- App bar title can be "Goal" with edit/delete overflow menu.
+- Header area shows goal title and type chip.
+- Below header, section title "Projects" and an `AsyncValue` list from
+  `watchProjectsByGoal(goal.id)`.
+- Project cards use title, status badge, optional due date, and trailing chevron.
+- FAB creates a project inside this goal.
+
+**Data shown**
+- `Goal.title`: prominent header, wraps up to 3 lines.
+- `Goal.type`: shared chip.
+- Each `Project.title`: primary list text, max 2 lines.
+- Each `Project.status`: shared status badge.
+- `Project.dueDate`: small secondary text "Due MMM d" when non-null.
+
+**User actions**
+- App bar Edit: open `GoalFormScreen(edit)`.
+- App bar Delete: open confirmation dialog; confirm calls
+  `goalsRepository.deleteGoal(goal.id)` and pops back to goals list.
+- Tap project card: open `ProjectDetailScreen`.
+- Project overflow Edit: open `ProjectFormScreen(edit)`.
+- Project overflow Delete: confirmation dialog; confirm calls
+  `projectsRepository.deleteProject(project.id)`. This is optional for Sprint 5
+  if deletion is implemented only on project detail, but never single-tap.
+- FAB/empty action: open `ProjectFormScreen(create, goalId: goal.id)`.
+
+**Empty state**
+- Title: "No projects yet."
+- Body: "Break this goal into a first clear project when you are ready."
+- Action: "Add project".
+
+**Loading state**
+- Header remains visible. Project area shows centered progress with
+  "Loading projects".
+
+**Error state**
+- Project area shows calm error panel. Goal header remains visible.
+
+**Navigation**
+- Edit goal -> `GoalFormScreen(edit)`.
+- Delete confirmed -> pop to `GoalsListScreen`.
+- Add project -> `ProjectFormScreen(create)`.
+- Project tap -> `ProjectDetailScreen(project)`.
+
+### `ProjectFormScreen` (`/goals/:id/projects/new`, `/projects/:id/edit`)
+
+**Layout**
+- App bar title is "New project" or "Edit project".
+- Form column: title field, status selector, optional due date row, actions.
+- Status selector should be `SegmentedButton<ProjectStatus>` where width allows;
+  otherwise use radio tiles so labels do not squeeze.
+- Due date row shows "No due date" or formatted date plus buttons to choose/clear.
+
+**Data shown**
+- Create mode starts with empty title, `ProjectStatus.active`, and no due date.
+- Edit mode pre-populates `Project.title`, `Project.status`, and `Project.dueDate`.
+- Status uses the same labels/colors as project badges.
+
+**User actions**
+- Save validates non-empty title, then calls add/update.
+- Choose due date opens Flutter `showDatePicker`.
+- Clear due date sets `dueDate` to null.
+- Cancel pops without saving.
+
+**Empty state**
+- Not applicable; this is a form.
+
+**Loading state**
+- During save, disable form/actions and show Save progress.
+
+**Error state**
+- Title validation: "Add a title to save this project."
+- Save failure: inline message, "Project was not saved. Nothing was lost; try
+  again."
+
+**Navigation**
+- Successful save -> `Navigator.pop`.
+- Cancel/back -> `Navigator.pop`.
+
+### `ProjectDetailScreen` (`/projects/:id`)
+
+**Layout**
+- App bar title can be "Project" with edit/delete overflow menu.
+- Header shows project title, status badge, optional due date.
+- Below header, section title "Tasks" and an `AsyncValue` list from
+  `watchTasksByParent(project.id)`.
+- Task cards show title, energy indicator, task type chip, optional weekly quota
+  for recurring tasks, and trailing edit affordance or chevron.
+- FAB creates a task inside this project.
+
+**Data shown**
+- `Project.title`: prominent header.
+- `Project.status`: shared status badge.
+- `Project.dueDate`: "Due MMM d" when present.
+- `Task.title`: primary list text, max 2 lines.
+- `Task.energyScore`: compact "`N` energy" indicator.
+- `Task.taskType`: shared task type chip.
+- `Task.weeklyQuota`: for recurring tasks only, secondary text like
+  "`N`/week target"; hidden for one-time tasks and when null.
+
+**User actions**
+- App bar Edit: open `ProjectFormScreen(edit)`.
+- App bar Delete: confirmation dialog; confirm calls
+  `projectsRepository.deleteProject(project.id)` and pops to goal detail.
+- Tap task card or card Edit: open `TaskFormScreen(edit)`.
+- Task overflow Delete: confirmation dialog; confirm calls
+  `tasksRepository.deleteTask(task.id)`.
+- FAB/empty action: open `TaskFormScreen(create, parentId: project.id,
+  parentType: ParentType.project)`.
+
+**Empty state**
+- Title: "No tasks yet."
+- Body: "Add one next action. Small counts."
+- Action: "Add task".
+
+**Loading state**
+- Header remains visible. Task area shows centered progress with "Loading tasks".
+
+**Error state**
+- Task area shows calm error panel. Project header remains visible.
+
+**Navigation**
+- Edit project -> `ProjectFormScreen(edit)`.
+- Delete confirmed -> pop to the parent goal detail.
+- Add task -> `TaskFormScreen(create)`.
+- Task tap/edit -> `TaskFormScreen(edit)`.
+
+### `TaskFormScreen` (`/projects/:id/tasks/new`, `/tasks/:id/edit`)
+
+**Layout**
+- App bar title is "New task" or "Edit task".
+- Form column: title field, energy score numeric input, task type selector,
+  conditional weekly quota numeric input, actions.
+- Energy score input should be a numeric `TextFormField` with helper text:
+  "Higher means this asks for more effort."
+- Task type selector should be a segmented control or radio group with "One-time"
+  and "Recurring".
+
+**Data shown**
+- Create mode starts with empty title, energy score default 0 or a low neutral
+  default if Dev/PM has already defined one, `TaskType.oneTime`, and no weekly
+  quota.
+- Edit mode pre-populates all fields from `Task`.
+- `weeklyQuota` field is visible and required only for `TaskType.recurring`.
+- `weeklyQuota` is hidden and saved as null for `TaskType.oneTime`.
+
+**User actions**
+- Save validates title is non-empty, energy score is an integer >= 0, and recurring
+  weekly quota is an integer > 0.
+- Save calls add/update on `tasksRepository`.
+- Cancel pops without saving.
+- No task completion action is designed for this sprint. If Dev discovers an
+  unavoidable `TaskCompletion` creation call site, `completedAt` must use
+  `DateTime.now().toUtc()`.
+
+**Empty state**
+- Not applicable; this is a form.
+
+**Loading state**
+- During save, disable form/actions and show Save progress.
+
+**Error state**
+- Title validation: "Add a title to save this task."
+- Energy validation: "Energy must be zero or more."
+- Weekly quota validation: "Add a weekly target for recurring tasks."
+- Save failure: inline message, "Task was not saved. Nothing was lost; try again."
+
+**Navigation**
+- Successful save -> `Navigator.pop`.
+- Cancel/back -> `Navigator.pop`.
+
+### Sprint 5 implementation notes for Dev
+
+- `GoalsListScreen` becomes `home:` in `MaterialApp`.
+- Use built-in `Navigator.push` / `Navigator.pop`; no routing package.
+- Use existing Riverpod providers and repositories only. Screens/widgets must not
+  make raw Firestore calls.
+- Keep generated IDs and `createdAt` construction in UI code minimal and consistent
+  with existing repository tests. Use UTC for created timestamps where the model
+  stores a new `DateTime`.
+- This sprint is out of scope for marking tasks complete and writing
+  `TaskCompletion` records. If a completion record is introduced despite that, its
+  `completedAt` must be `DateTime.now().toUtc()`.
+- If `google_fonts` has not been PM-approved by implementation time, use the
+  current Material 3 text theme and map hierarchy through `TextTheme` styles rather
+  than adding the package.

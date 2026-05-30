@@ -1,185 +1,222 @@
-# Sprint 4 — Task Completion Tracking + Energy Budgeting Engine
+# Sprint 6 — Timer Core
 
 > **Status: AWAITING HUMAN APPROVAL**
 > PM wrote this. Dev does not begin until the human operator approves.
 
-**Goal:** Build the data primitive for recording task completions, then implement
-the Energy Budgeting Engine as a pure, fully-tested logic layer. This is the
-core differentiator of Habitude — cognitive capacity management instead of time
-management. No UI required this sprint.
+**Goal:** Build the full data and logic layer for the focus timer. When this
+sprint is done, the timer can be started, paused, resumed, and stopped from
+pure Dart/Riverpod with no UI — and stopping it automatically persists a
+`Tracker` record and a `TaskCompletion` to Firestore. The UI (TimerScreen,
+foreground service, overtime) comes in Sprint 7.
 
 **Scope:**
-- `lib/features/energy/task_completion.dart` (new model)
-- `lib/features/energy/task_completion_repository.dart` (new repository)
-- `lib/features/energy/energy_engine.dart` (new pure logic)
-- `lib/features/energy/energy_service.dart` (new Riverpod provider)
-- `lib/shared/firestore_paths.dart` (add `taskCompletions` path)
+- `lib/features/timer/tracker.dart` (new model)
+- `lib/features/timer/tracker_repository.dart` (new repository)
+- `lib/features/timer/timer_state.dart` (new value object + enum)
+- `lib/features/timer/timer_notifier.dart` (new Riverpod Notifier + pure helpers)
+- `lib/shared/firestore_paths.dart` (add `trackers` path)
 
 **Sprint type:** Non-UI. Loop: PM → Dev → Optimization → Security → PM closes.
 
-**No new packages.** All dependencies already in `pubspec.yaml`.
+**No new packages.** `shared_preferences` and `flutter_riverpod` are already
+in `pubspec.yaml`.
 
-**Design note — why TaskCompletion is a separate model (not a field on Task):**
-A recurring `Task` can be completed many times (weekly quota). A one-time `Task`
-can be un-completed (undo). The energy baseline needs a dated, immutable record
-per completion event. Adding `completedAt` to `Task` handles only the last
-completion and loses history. A flat `task_completions` collection with one
-document per completion event is the correct data shape.
+**Design rationale — why Timer is split across two sprints:**
+Sprint 6 is the state machine and persistence layer. Sprint 7 adds the
+TimerScreen, `flutter_foreground_task` (Android foreground service), the
+Overtime Mechanic, and the Dead-Man's Switch. Splitting keeps each sprint
+testable independently: Sprint 6's logic is fully unit-testable without Flutter
+widgets; Sprint 7 builds on a proven, stable foundation.
 
-**Design note — energy tax and capacity warning are out of scope this sprint:**
-The spec's Energy Tax (deducting fixed events) and Capacity Warning (checking
-scheduled task load) both depend on the Calendar feature (Sprint 12). Implementing
-them now would require stub models with no real backing. Deferred deliberately.
+**UTC requirement (carried from Sprint 4):** Every `DateTime` created in
+this sprint — `startedAt`, `stoppedAt`, `completedAt` — must use
+`DateTime.now().toUtc()`.
 
 ---
 
-### Task 1 — TaskCompletion model + FirestorePaths update
+### Task 1 — Tracker model + FirestorePaths update
 
-**File:** `lib/features/energy/task_completion.dart`
+**File:** `lib/features/timer/tracker.dart`
 
 **Fields:**
 
 | Field | Type | Notes |
 |---|---|---|
 | `id` | `String` | |
-| `taskId` | `String` | References the parent Task |
-| `energyScore` | `int` (≥ 0) | Snapshot of the task's energy at completion time |
-| `completedAt` | `DateTime` (UTC) | When the completion occurred |
+| `taskId` | `String` | The task being focused on |
+| `startedAt` | `DateTime` (UTC) | When the timer was started |
+| `stoppedAt` | `DateTime?` (UTC) | null while running; set on stop |
+| `durationSeconds` | `int` (≥ 0) | Actual logged focus seconds (set on stop) |
+| `targetSeconds` | `int` (> 0) | Pomodoro target; default 1500 (25 min) |
 
 **FirestorePaths update:** `lib/shared/firestore_paths.dart`
 Add one static method:
 
 | Method | Returns |
 |---|---|
-| `taskCompletions(String uid)` | `"users/$uid/task_completions"` |
+| `trackers(String uid)` | `"users/$uid/trackers"` |
 
 **Acceptance criteria:**
 
-- Given any `TaskCompletion` instance `a`, `a.toJson()` then
-  `TaskCompletion.fromJson(map)` equals `a` (Freezed `==`).
-- Given two `TaskCompletion` instances with identical fields, `a == b` is true.
-- `FirestorePaths.taskCompletions("abc123") == "users/abc123/task_completions"`.
+- Given any `Tracker` instance `a`, `a.toJson()` then `Tracker.fromJson(map)`
+  equals `a` (Freezed `==`).
+- Given a `Tracker` with `stoppedAt: null`, roundtrip preserves `stoppedAt == null`.
+- `FirestorePaths.trackers("abc123") == "users/abc123/trackers"`.
 - All criteria covered by unit tests.
 
 ---
 
-### Task 2 — TaskCompletionRepository & Provider
+### Task 2 — TrackerRepository & Provider
 
-**File:** `lib/features/energy/task_completion_repository.dart`
+**File:** `lib/features/timer/tracker_repository.dart`
 
-**`TaskCompletionRepository` interface:**
+**Interface:**
 
 | Method | Return type | Behavior |
 |---|---|---|
-| `watchCompletions()` | `Stream<List<TaskCompletion>>` | Real-time stream, all completions for the user |
-| `watchCompletionsSince(DateTime since)` | `Stream<List<TaskCompletion>>` | Stream filtered to `completedAt >= since` |
-| `addCompletion(TaskCompletion c)` | `Future<void>` | Writes to `task_completions/{c.id}` |
-| `deleteCompletion(String id)` | `Future<void>` | Deletes `task_completions/{id}` (supports undo) |
+| `watchTrackers()` | `Stream<List<Tracker>>` | All trackers for the user |
+| `watchTrackersByTask(String taskId)` | `Stream<List<Tracker>>` | Filtered by taskId |
+| `addTracker(Tracker t)` | `Future<void>` | Writes to `trackers/{t.id}` |
+| `updateTracker(Tracker t)` | `Future<void>` | Overwrites `trackers/{t.id}` |
 
-**Providers** (using `riverpod_annotation` / `@riverpod`):
-- `taskCompletionRepositoryProvider` — provides `TaskCompletionRepository`
-- `taskCompletionsStreamProvider` — `StreamProvider<List<TaskCompletion>>`
-  consuming `watchCompletions()`
+Note: No delete method. Tracker records are permanent history.
+
+**Providers:**
+- `trackerRepositoryProvider` — provides `TrackerRepository`
+- `trackersStreamProvider` — `StreamProvider<List<Tracker>>`
 
 **Acceptance criteria** (tests use `fake_cloud_firestore`):
 
-- Given an empty collection, `watchCompletions()` emits an empty list (no error).
-- Given `addCompletion(c)`, the next `watchCompletions()` snapshot contains `c`
-  (full Freezed equality).
-- Given `addCompletion(c)` then `deleteCompletion(c.id)`, the next snapshot is empty.
-- Given `addCompletion(cOld)` where `cOld.completedAt = T - 8 days` and
-  `addCompletion(cNew)` where `cNew.completedAt = T - 3 days`, when
-  `watchCompletionsSince(T - 7 days)` emits, the result contains only `cNew`.
-- `taskCompletionsStreamProvider` tested with `ProviderContainer`: stream emits
-  expected values.
-- No raw Firestore calls outside `TaskCompletionRepository`.
+- Given empty collection, `watchTrackers()` emits empty list.
+- Given `addTracker(t)`, next `watchTrackers()` snapshot contains `t`.
+- Given `addTracker(t)` then `updateTracker(t.copyWith(stoppedAt: now))`,
+  next snapshot has `stoppedAt` set.
+- Given two trackers with different `taskId`, `watchTrackersByTask(id1)` returns
+  only the matching one.
+- No raw Firestore calls outside `TrackerRepository`.
 
 ---
 
-### Task 3 — EnergyEngine pure functions
+### Task 3 — TimerState value object
 
-**File:** `lib/features/energy/energy_engine.dart`
+**File:** `lib/features/timer/timer_state.dart`
 
-A pure Dart file — **no Flutter imports, no Riverpod, no Firestore.** Only
-`dart:core` and the `TaskCompletion` model.
-
-**Functions:**
+**Status enum:**
 
 ```dart
-// Returns the sum of energyScore for all completions whose completedAt
-// falls on the same UTC calendar date as `day`.
-int dailyPoints(List<TaskCompletion> completions, DateTime day);
-
-// Returns the rolling 7-day average of daily points.
-// `history` should contain completions for exactly the 7 UTC calendar days
-// ending today (inclusive) — the caller is responsible for this window.
-// - If history spans fewer than 7 distinct days with any completions,
-//   average only the days that have at least one completion.
-// - If history is empty, return defaultBaseline.
-int energyBaseline(
-  List<TaskCompletion> history, {
-  int defaultBaseline = 80,
-});
+enum TimerStatus { idle, running, paused }
 ```
 
-**Acceptance criteria** (pure Dart unit tests — no Flutter test runner needed):
+**TimerState** (Freezed, but NOT JSON-serialized — it is ephemeral in-process
+state, not persisted to Firestore):
 
-- Given 7 days, each with completions totalling 100 pts, `energyBaseline` returns 100.
-- Given 3 days with completions totalling 80, 100, and 60 pts (in any order),
-  `energyBaseline` returns 80 (average of three days: (80+100+60)/3 = 80).
-- Given an empty list, `energyBaseline` returns `defaultBaseline` (80 by default).
-- Given `defaultBaseline: 60` passed explicitly, empty list returns 60.
-- Given completions on day D and day D+1, `dailyPoints(completions, D)` returns
-  only the sum for day D (day D+1 completions are excluded).
-- Given two completions on the same day with scores 30 and 50,
-  `dailyPoints` returns 80.
-- Given a `TaskCompletion` with `completedAt` at 23:59 UTC on day D and another
-  at 00:01 UTC on day D+1, `dailyPoints(completions, D)` returns only the first
-  score (UTC date boundary is respected).
+| Field | Type | Notes |
+|---|---|---|
+| `status` | `TimerStatus` | Current timer status |
+| `taskId` | `String?` | null when idle |
+| `trackerId` | `String?` | null when idle |
+| `energyScore` | `int` | Snapshot of task energy; 0 when idle |
+| `targetSeconds` | `int` | Pomodoro target; 1500 default |
+| `elapsedSeconds` | `int` | Seconds elapsed so far |
+| `startedAt` | `DateTime?` (UTC) | null when idle |
+
+**Default (idle) state:**
+```dart
+TimerState(
+  status: TimerStatus.idle,
+  targetSeconds: 1500,
+  elapsedSeconds: 0,
+)
+```
+
+**Acceptance criteria:**
+
+- Default state has `status == idle`, `elapsedSeconds == 0`, `taskId == null`.
+- Freezed equality: two `TimerState` instances with identical fields are `==`.
+- Unit tests for both criteria.
 
 ---
 
-### Task 4 — EnergyService provider
+### Task 4 — TimerNotifier + pure helpers
 
-**File:** `lib/features/energy/energy_service.dart`
+**File:** `lib/features/timer/timer_notifier.dart`
 
-**Provider:**
+**Pure helper functions** (pure Dart, no imports beyond `dart:core` and
+`timer_state.dart`; place in the same file or a co-located `timer_math.dart`):
 
 ```dart
-@riverpod
-Stream<int> energyBaseline(Ref ref);
+// Seconds elapsed from startedAt to now. Always >= 0.
+int computeElapsed(DateTime startedAt, DateTime now);
+
+// True if elapsed >= target (timer complete).
+bool isComplete(int elapsedSeconds, int targetSeconds);
 ```
 
-Behavior:
-1. Watches `taskCompletionsStreamProvider` (live Firestore stream of all completions).
-2. Filters the emitted list to completions whose `completedAt` is within the last
-   7 UTC calendar days (today inclusive). Uses `DateTime.now().toUtc()` for "today."
-3. Passes the filtered list to `EnergyEngine.energyBaseline()`.
-4. Emits the resulting `int`.
+**TimerNotifier** (`Notifier<TimerState>` via `@riverpod`):
 
-**Acceptance criteria** (tests use `ProviderContainer` + overridden providers):
+| Method | Parameters | Behavior |
+|---|---|---|
+| `startTimer` | `taskId, energyScore, {targetSeconds = 1500}` | Creates a `Tracker` in `TrackerRepository` (startedAt = now.toUtc(), stoppedAt null, durationSeconds 0). Saves `taskId`, `trackerId`, `energyScore`, `targetSeconds`, and `startedAt.toIso8601String()` to `shared_preferences`. Starts a `Timer.periodic(1 second)` that calls `_tick()`. State → running. |
+| `pauseTimer` | — | Cancels the periodic timer. Saves current `elapsedSeconds` to `shared_preferences` (key `timer_elapsed`). State → paused. |
+| `resumeTimer` | — | Reads `elapsedSeconds` from `shared_preferences`. Restarts `Timer.periodic`. State → running. |
+| `stopTimer` | — | Cancels the periodic timer. Updates the `Tracker` via `TrackerRepository.updateTracker()` (stoppedAt = now.toUtc(), durationSeconds = elapsedSeconds). Creates a `TaskCompletion` via `TaskCompletionRepository.addCompletion()` (completedAt = now.toUtc(), energyScore = state.energyScore). Clears all timer keys from `shared_preferences`. State → idle. |
+| `reconcile` | — | Called on notifier build. Reads `shared_preferences` for in-progress timer. If found, computes elapsed using `computeElapsed(startedAt, now)` and restores state to running; restarts `Timer.periodic`. If nothing found, state stays idle. |
 
-- Given `taskCompletionsStreamProvider` overridden to emit a list with 7 days of
-  100-pt completions, `energyBaselineProvider` emits 100.
-- Given the override emitting an empty list, `energyBaselineProvider` emits 80
-  (the default baseline).
-- Given the override emitting 3 days of data (80, 90, 100 pts), `energyBaselineProvider`
-  emits 90 (average: (80+90+100)/3 = 90).
-- Given the override emitting a mix of completions where some are older than 7 days,
-  `energyBaselineProvider` excludes the old ones from the average.
+**`_tick()` (private):** increments `elapsedSeconds` by 1. Does NOT auto-stop
+at target — the UI (Sprint 7) will observe `isComplete()` and offer the
+overtime transition. The notifier ticks indefinitely until `stopTimer()` or
+`pauseTimer()` is called.
+
+**shared_preferences keys** (constants in the file):
+```dart
+const _kTaskId     = 'timer_task_id';
+const _kTrackerId  = 'timer_tracker_id';
+const _kEnergyScore = 'timer_energy_score';
+const _kTargetSecs = 'timer_target_secs';
+const _kStartedAt  = 'timer_started_at';   // ISO 8601 UTC string
+const _kElapsed    = 'timer_elapsed';       // int, written on pause
+```
+
+**Providers:**
+- `timerNotifierProvider` — `NotifierProvider<TimerNotifier, TimerState>`
+
+**Acceptance criteria** (tests use `ProviderContainer` with overridden
+`trackerRepositoryProvider`, `taskCompletionRepositoryProvider`, and a fake
+`SharedPreferences`):
+
+- Given `startTimer(taskId: 'task1', energyScore: 30)`, state becomes running
+  with `taskId == 'task1'` and `elapsedSeconds == 0`.
+- Given `startTimer(...)` then `stopTimer()`, state becomes idle, a `Tracker`
+  with non-null `stoppedAt` exists in the fake TrackerRepository, and a
+  `TaskCompletion` with `energyScore == 30` and non-null UTC `completedAt`
+  exists in the fake TaskCompletionRepository.
+- Given `startTimer(...)` then `pauseTimer()`, state is paused; calling
+  `resumeTimer()` brings state back to running.
+- `computeElapsed(startedAt, now)` where `now - startedAt == 90 seconds` returns 90.
+- `computeElapsed` returns 0 when `now <= startedAt` (no negative elapsed).
+- `isComplete(1500, 1500)` returns true. `isComplete(1499, 1500)` returns false.
+- Given `shared_preferences` seeded with a valid in-progress timer (taskId,
+  trackerId, startedAt = 60 seconds ago), `reconcile()` restores state to
+  running with `elapsedSeconds == 60`.
+- All criteria covered by unit tests.
+
+**Note on Timer.periodic in tests:** Do not advance the clock in tests — only
+test the start/stop/pause/resume state transitions and repository side-effects
+directly. The periodic tick math (`computeElapsed`) is tested via the pure
+helper functions.
 
 ---
 
-## Out of scope for Sprint 4
+## Out of scope for Sprint 6
 
-- Energy tax (fixed event deductions) — deferred to Calendar sprint
-- Capacity warning UI — deferred to Calendar sprint
-- Task completion UI (marking a task done from a screen) — deferred to Goals UI sprint
-- `weeklyQuota` reset logic and rolling consistency ratios — Gamification sprint
-- Any screen or widget
+- TimerScreen (any UI) — Sprint 7
+- `flutter_foreground_task` Android foreground service — Sprint 7
+- Overtime Mechanic and Dead-Man's Switch — Sprint 7
+- `flutter_local_notifications` integration — Sprint 7
+- Task-level `targetSeconds` customisation (all timers default to 1500 s)
 
 ---
 
 ## Approval
 
-- [x] Human operator approved this sprint scope. (2026-05-29)
+- [ ] Human operator approved this sprint scope.
