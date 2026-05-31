@@ -29,7 +29,9 @@ class _TimerScreenState extends ConsumerState<TimerScreen> {
     final timerState = ref.read(timerNotifierProvider);
     if (timerState.status == TimerStatus.idle) {
       try {
-        await ref.read(timerNotifierProvider.notifier).startTimer(
+        await ref
+            .read(timerNotifierProvider.notifier)
+            .startTimer(
               taskId: widget.task.id,
               taskTitle: widget.task.title,
               energyScore: widget.task.energyScore,
@@ -71,14 +73,14 @@ class _TimerScreenState extends ConsumerState<TimerScreen> {
     final timerState = ref.watch(timerNotifierProvider);
 
     // Watch for check-in modal
-    ref.listen(
-      timerNotifierProvider.select((s) => s.awaitingCheckIn),
-      (previous, next) {
-        if (next == true) {
-          _showCheckInModal();
-        }
-      },
-    );
+    ref.listen(timerNotifierProvider.select((s) => s.awaitingCheckIn), (
+      previous,
+      next,
+    ) {
+      if (next == true) {
+        _showCheckInModal();
+      }
+    });
 
     if (_errorMessage != null) {
       return Scaffold(
@@ -99,9 +101,9 @@ class _TimerScreenState extends ConsumerState<TimerScreen> {
                 children: [
                   Text(
                     widget.task.title,
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          color: AppColors.mesaSky,
-                        ),
+                    style: Theme.of(
+                      context,
+                    ).textTheme.titleMedium?.copyWith(color: AppColors.mesaSky),
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 24),
@@ -111,15 +113,21 @@ class _TimerScreenState extends ConsumerState<TimerScreen> {
                     decoration: BoxDecoration(
                       color: AppColors.surfaceLight,
                       borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: AppColors.juniper.withAlpha(25)),
+                      border: Border.all(
+                        color: AppColors.juniper.withAlpha(25),
+                      ),
                     ),
                     child: Column(
                       children: [
-                        const Icon(Icons.info_outline, color: AppColors.juniper),
+                        const Icon(
+                          Icons.info_outline,
+                          color: AppColors.juniper,
+                        ),
                         const SizedBox(height: 16),
                         Text(
                           _errorMessage!,
-                          style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                          style: Theme.of(context).textTheme.titleLarge
+                              ?.copyWith(
                                 color: AppColors.juniper,
                                 fontWeight: FontWeight.bold,
                               ),
@@ -145,11 +153,16 @@ class _TimerScreenState extends ConsumerState<TimerScreen> {
     final isOvertime = timerState.status == TimerStatus.overtime;
     final displayTime = isOvertime
         ? _formatOvertime(timerState.overtimeSeconds)
-        : _formatCountdown(timerState.targetSeconds - timerState.elapsedSeconds);
+        : _formatCountdown(
+            timerState.targetSeconds - timerState.elapsedSeconds,
+          );
 
     final progress = isOvertime
         ? 1.0
-        : (timerState.elapsedSeconds / timerState.targetSeconds).clamp(0.0, 1.0);
+        : (timerState.elapsedSeconds / timerState.targetSeconds).clamp(
+            0.0,
+            1.0,
+          );
 
     return Scaffold(
       appBar: AppBar(
@@ -177,7 +190,8 @@ class _TimerScreenState extends ConsumerState<TimerScreen> {
                     padding: const EdgeInsets.symmetric(horizontal: 32.0),
                     child: Text(
                       widget.task.title,
-                      style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                      style: Theme.of(context).textTheme.headlineSmall
+                          ?.copyWith(
                             color: AppColors.juniper,
                             fontWeight: FontWeight.bold,
                           ),
@@ -196,7 +210,9 @@ class _TimerScreenState extends ConsumerState<TimerScreen> {
                         child: CircularProgressIndicator(
                           value: progress,
                           strokeWidth: 12,
-                          color: isOvertime ? AppColors.ember : AppColors.juniper,
+                          color: isOvertime
+                              ? AppColors.ember
+                              : AppColors.juniper,
                           backgroundColor: AppColors.surfaceLight,
                         ),
                       ),
@@ -214,14 +230,12 @@ class _TimerScreenState extends ConsumerState<TimerScreen> {
                             ),
                           Text(
                             displayTime,
-                            style: Theme.of(context)
-                                .textTheme
-                                .displayLarge
+                            style: Theme.of(context).textTheme.displayLarge
                                 ?.copyWith(
                                   color: AppColors.juniper,
                                   fontWeight: FontWeight.bold,
                                   fontFeatures: [
-                                    const FontFeature.tabularFigures()
+                                    const FontFeature.tabularFigures(),
                                   ],
                                 ),
                           ),
@@ -236,8 +250,9 @@ class _TimerScreenState extends ConsumerState<TimerScreen> {
                         : 'Stay with this until the bell.',
                     style: TextStyle(
                       color: isOvertime ? AppColors.saguaro : AppColors.mesaSky,
-                      fontWeight:
-                          isOvertime ? FontWeight.bold : FontWeight.normal,
+                      fontWeight: isOvertime
+                          ? FontWeight.bold
+                          : FontWeight.normal,
                     ),
                     textAlign: TextAlign.center,
                   ),

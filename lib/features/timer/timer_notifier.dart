@@ -260,10 +260,7 @@ class TimerNotifier extends _$TimerNotifier {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_kLastCheckInAt, now.toIso8601String());
 
-    state = state.copyWith(
-      lastCheckInAt: now,
-      awaitingCheckIn: false,
-    );
+    state = state.copyWith(lastCheckInAt: now, awaitingCheckIn: false);
 
     _scheduleCheckInNotification(1800);
   }
@@ -316,7 +313,9 @@ class TimerNotifier extends _$TimerNotifier {
       lastCheckInAt: now,
     );
 
-    ref.read(notificationServiceProvider).show(
+    ref
+        .read(notificationServiceProvider)
+        .show(
           id: 100,
           title: 'Focus goal reached',
           body: 'Overtime is yours if you want it.',
@@ -388,7 +387,9 @@ class TimerNotifier extends _$TimerNotifier {
 
     state = const TimerState(status: TimerStatus.idle);
 
-    ref.read(notificationServiceProvider).show(
+    ref
+        .read(notificationServiceProvider)
+        .show(
           id: 102,
           title: 'Timer paused for you',
           body:
@@ -425,7 +426,9 @@ class TimerNotifier extends _$TimerNotifier {
       tz.local,
     );
 
-    await ref.read(notificationServiceProvider).zonedSchedule(
+    await ref
+        .read(notificationServiceProvider)
+        .zonedSchedule(
           id: 101,
           title: 'Still focusing?',
           body:

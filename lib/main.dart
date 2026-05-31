@@ -4,8 +4,7 @@ import 'package:flutter_foreground_task/flutter_foreground_task.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:timezone/data/latest_all.dart' as tz;
-import 'package:habitude/features/goals/screens/goals_list_screen.dart';
-import 'package:habitude/features/timer/timer_notifier.dart';
+import 'package:habitude/shared/root_screen.dart';
 import 'package:habitude/shared/auth_repository.dart';
 import 'package:habitude/shared/theme.dart';
 
@@ -74,7 +73,7 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: 'Habitude',
       theme: AppTheme.light,
-      home: const GoalsListScreen(),
+      home: const RootScreen(),
     );
   }
 }

@@ -1,37 +1,37 @@
-# Sprint 7 — Timer UI + Overtime Mechanic + Dead-Man's Switch
+# Sprint 8 — Brain Dump + Morning Triage Funnel
 
 > **Status: AWAITING HUMAN APPROVAL**
 > PM wrote this. Dev does not begin until the human operator approves.
 
-**Goal:** Ship the complete, production-quality focus-timer experience — the
-app's core differentiator. When this sprint is done, a user can tap "Focus" on
-a task, watch a Pomodoro countdown, seamlessly enter overtime, receive check-in
-prompts every 30 minutes, and have the Dead-Man's Switch auto-stop the timer
-and protect their energy baseline if they go silent.
+**Goal:** Build the frictionless capture and daily decision-clearing workflow.
+When this sprint is done, users can dump unstructured thoughts into an inbox at
+any time and then clear their head each morning with a fast swipe-based triage
+that surfaces brain dump items and pending recurring tasks.
 
 **Scope:**
-- `lib/features/timer/screens/timer_screen.dart` (new)
-- `lib/features/timer/timer_foreground_service.dart` (new — `flutter_foreground_task` wrapper)
-- `lib/features/timer/timer_state.dart` (extend: add `overtime`, `overtimeSeconds`,
-  `lastCheckInAt`, `awaitingCheckIn`)
-- `lib/features/timer/timer_notifier.dart` (extend: `checkIn()`, overtime/DMS logic,
-  `flutter_foreground_task` + `flutter_local_notifications` integration)
-- `lib/features/goals/screens/project_detail_screen.dart` (add "Focus" action on tasks)
-- `android/app/src/main/AndroidManifest.xml` (foreground service + notification permissions)
-- `ios/Runner/Info.plist` (no background entitlement needed; document iOS strategy)
-- `truth/design.md` (Designer appends Sprint 7 spec)
+- `lib/features/triage/brain_dump_item.dart` (new model)
+- `lib/features/triage/brain_dump_repository.dart` (new repository)
+- `lib/features/triage/triage_service.dart` (new pure logic)
+- `lib/features/triage/screens/brain_dump_screen.dart` (new screen)
+- `lib/features/triage/screens/triage_funnel_screen.dart` (new screen)
+- `lib/shared/firestore_paths.dart` (add `brainDumpItems` path)
+- `truth/design.md` (Designer appends Sprint 8 spec)
 
 **Sprint type: UI.**
 Loop: PM → Designer (pre-spec) → Dev → Designer (UI review) → Optimization → Security → PM closes.
 
-**Packages used this sprint** (all already in pubspec — no new packages):
-- `flutter_foreground_task` — Android foreground service
-- `flutter_local_notifications` — Overtime + check-in + auto-stop notifications
+**No new packages.** All dependencies already in `pubspec.yaml`.
 
-**Key invariants carried from Sprint 6:**
-- All `DateTime` values use `DateTime.now().toUtc()`.
-- `TimerNotifier` methods from Sprint 6 (`startTimer`, `stopTimer`, etc.) must
-  remain fully tested; new overtime/DMS logic is additive.
+**Design note — "Schedule" without a Calendar:**
+The spec defines "Schedule" as dropping an item onto the daily calendar. The
+Calendar is Sprint 11. For Sprint 8, the "Schedule" action marks the brain dump
+item as `scheduledForDate = today (UTC)` and removes it from the triage queue.
+When the Calendar is built in Sprint 11, scheduled items will surface there.
+This is an intentional MVP compromise — do not build a calendar picker here.
+
+**Design note — Voice-to-Text OS Hook:**
+Exposing intents to Siri/Google Assistant requires platform-native App Extensions
+and significant platform config. Deferred to production hardening (Sprint 15).
 
 ---
 
@@ -39,53 +39,52 @@ Loop: PM → Designer (pre-spec) → Dev → Designer (UI review) → Optimizati
 
 **Addressee: Designer**
 
-Append a "Sprint 7 visual spec — Timer UI" section to `truth/design.md`.
+Append a "Sprint 8 visual spec — Brain Dump + Triage" section to `truth/design.md`.
 
-### Screens / surfaces to spec
+### Surfaces to spec
 
 | Surface | Description |
 |---|---|
-| `TimerScreen` | Full-screen focus experience: task name, timer display, controls |
-| `TimerScreen — overtime mode` | How the screen changes when countdown hits zero |
-| `"Still Focusing?" modal` | In-app check-in dialog during overtime |
-| `"Focus" action on task items` | Small addition to task cards in `ProjectDetailScreen` |
+| `BrainDumpScreen` | Inbox list — view + add + delete brain dump items; entry point to triage |
+| `TriageFunnelScreen` | One-card-at-a-time swipe interface (Brain Dump items + pending recurring tasks) |
+| Navigation entry point | How the user reaches BrainDumpScreen from the app (e.g., bottom nav, FAB, app bar action on GoalsListScreen) |
 
 ### What the spec must include (per surface)
 
-- **TimerScreen (countdown mode):**
-  Layout, task name display, timer display format (MM:SS), visual progress
-  indicator (arc, ring, or bar), Pause and Stop controls, what Stop shows
-  (confirmation or direct?), how the screen is reached (route + source).
+**BrainDumpScreen:**
+- Layout: list of brain dump items (text + relative timestamp), text-input area
+  to capture a new item, and a "Start Triage" button/FAB.
+- Empty state: what the screen shows when the inbox is empty.
+- Item actions: how an item is deleted (swipe, overflow, etc.) with confirmation
+  or undo affordance consistent with core philosophy (forgiveness over destruction).
+- "Start Triage" affordance: disabled/hidden when there are no items to triage
+  (brain dump empty AND no pending recurring tasks), or always visible?
 
-- **TimerScreen (overtime mode):**
-  How the UI signals the shift from countdown to overtime (visual change,
-  copy change). Timer display switches to counting up (+ prefix or "overtime"
-  label). Copy that frames overtime positively — reward the hyperfocus, not
-  punish it (core philosophy). The Pause and Stop controls remain.
+**TriageFunnelScreen:**
+- Layout: one card at a time, filling most of the screen.
+- Card content: for a brain dump item — the text; for a recurring task — title,
+  energy score, weekly quota progress (e.g. "1 of 3 this week").
+- Three actions and their gestures/buttons:
+  - **Do Today** (formerly "Schedule") — right swipe or right button
+  - **Tomorrow** (Backlog) — left swipe or left button
+  - **Remove** — downward swipe or explicit button/icon
+- Visual swipe indicators: hint to the user which direction maps to which action.
+- Completion state: all cards processed — calm "All caught up!" confirmation.
+- Tone: non-shaming. Backlogging is not failure. Removing is not failure.
 
-- **"Still Focusing?" modal:**
-  Triggered every 30 minutes of overtime. Copy, two actions: "Yes, still here"
-  and "Stop timer". Tone: calm, non-intrusive, non-shaming.
-
-- **"Focus" action on task items in ProjectDetailScreen:**
-  Where the tap target lives on the task card (trailing icon, overflow menu item,
-  or secondary button). What it does (navigates to TimerScreen with the task).
-
-- **Notification copy (for Dev reference):**
-  Three notifications to specify copy for:
-  1. Foreground service status bar (shown while timer runs): title + body for
-     countdown mode and overtime mode.
-  2. "Still Focusing?" check-in (fired every 30 min of overtime): title + body
-     + two action button labels ("Yes, still here" / "Stop timer").
-  3. Auto-stop notification (fired when Dead-Man's Switch fires): title + body
-     (calm, non-shaming — the user didn't fail, the timer just protected them).
+**Navigation entry point:**
+- Where in the existing app structure does the user reach BrainDumpScreen?
+  Spec a concrete navigation location (e.g., persistent bottom nav bar added to
+  GoalsListScreen, or an icon in the GoalsListScreen app bar).
+  If a bottom navigation bar is introduced, spec the tab structure.
 
 ### Design constraints
-- Honour the Sedona Sunset palette and Material 3 base from `design.md`.
-- Core philosophy: reward focus, never shame interruption. Overtime is positive.
-  Dead-Man's Switch firing is protective, not a failure message.
-- The timer display must be immediately readable at a glance.
-- Pause vs. Stop must be visually distinct — accidental stops are frustrating.
+- Sedona Sunset palette, Material 3 base.
+- Core philosophy: triage is about reducing decision friction, not adding it.
+  Cards should be large and tap targets generous.
+- Triage must work in under a minute for a typical 5-item inbox.
+- Swipe indicators must be clear before the user commits — directional hints
+  visible from the resting card state.
 
 ---
 
@@ -93,173 +92,165 @@ Append a "Sprint 7 visual spec — Timer UI" section to `truth/design.md`.
 
 **Addressee: Dev** (after Designer hands off)
 
-### Task 1 — Extend TimerState + TimerNotifier for overtime and Dead-Man's Switch
+### Task 1 — BrainDumpItem model + FirestorePaths update
 
-**File updates:** `lib/features/timer/timer_state.dart`,
-`lib/features/timer/timer_notifier.dart`
+**File:** `lib/features/triage/brain_dump_item.dart`
 
-**TimerState additions:**
+**Fields:**
 
 | Field | Type | Notes |
 |---|---|---|
-| `status` | `TimerStatus` | Add `TimerStatus.overtime` to enum |
-| `overtimeSeconds` | `int` | Counts up from 0 once overtime begins; 0 in other states |
-| `lastCheckInAt` | `DateTime?` (UTC) | Set on `startTimer`; updated on each `checkIn()` |
-| `awaitingCheckIn` | `bool` | True when the 30-min prompt is active; triggers in-app modal |
+| `id` | `String` | |
+| `text` | `String` | The raw captured thought |
+| `createdAt` | `DateTime` (UTC) | |
+| `backloggedUntil` | `DateTime?` (UTC date, time zeroed) | null = not backlogged; set = snoozed until this date |
+| `scheduledForDate` | `DateTime?` (UTC date, time zeroed) | null = unscheduled; set = scheduled for calendar |
 
-**TimerNotifier additions:**
+**FirestorePaths update:**
+Add `brainDumpItems(String uid)` → `"users/$uid/brain_dump_items"`.
 
-| Method | Behavior |
-|---|---|
-| `checkIn()` | Sets `lastCheckInAt = now.toUtc()`. Sets `awaitingCheckIn = false`. Cancels and reschedules the next check-in notification (30 min from now). Resets the 5-minute Dead-Man's Switch countdown. |
-| Internal `_onTargetReached()` | Called when `elapsedSeconds >= targetSeconds` in `_tick()`. Transitions status to `overtime`. Fires the "Focus goal reached!" local notification. Schedules the first "Still Focusing?" check-in notification at `now + 30 min`. Sets `lastCheckInAt = now.toUtc()`. |
-| Internal `_onCheckInDue()` | Called 30 minutes into overtime (and every 30 min after). Sets `awaitingCheckIn = true`. Starts a 5-minute `Timer` (the Dead-Man's Switch countdown). |
-| Internal `_onDeadMansSwitch()` | Called if no `checkIn()` within 5 minutes of `_onCheckInDue()`. Calls `stopTimer()` with `durationSeconds` capped at `lastCheckInAt - startedAt` in seconds (only log confirmed focus time). |
+**Acceptance criteria:**
+- JSON roundtrip preserves all fields including null optionals.
+- `FirestorePaths.brainDumpItems("abc123") == "users/abc123/brain_dump_items"`.
+- Unit tests cover both.
 
-**Overtime tick:** `_tick()` also increments `overtimeSeconds` when
-`status == overtime`.
+---
 
-**shared_preferences additions** (persist across app restarts):
+### Task 2 — BrainDumpRepository & Provider
+
+**File:** `lib/features/triage/brain_dump_repository.dart`
+
+**Interface:**
+
+| Method | Return | Behavior |
+|---|---|---|
+| `watchAllItems()` | `Stream<List<BrainDumpItem>>` | All items, ordered by createdAt desc |
+| `watchActiveItems(DateTime today)` | `Stream<List<BrainDumpItem>>` | Items where `scheduledForDate == null` AND (`backloggedUntil == null` OR `backloggedUntil` day ≤ `today` day) |
+| `addItem(BrainDumpItem item)` | `Future<void>` | |
+| `updateItem(BrainDumpItem item)` | `Future<void>` | Used for backlog/schedule actions |
+| `deleteItem(String id)` | `Future<void>` | Used for Remove action |
+
+**Providers:**
+- `brainDumpRepositoryProvider`
+- `brainDumpActiveItemsProvider` — `StreamProvider<List<BrainDumpItem>>` consuming
+  `watchActiveItems(DateTime.now().toUtc())` — items available in today's triage.
+
+**Acceptance criteria** (tests use `fake_cloud_firestore`):
+- Given empty collection, `watchActiveItems` emits empty list.
+- Given item with `backloggedUntil = yesterday`, it appears in `watchActiveItems(today)`.
+- Given item with `backloggedUntil = tomorrow`, it does NOT appear in `watchActiveItems(today)`.
+- Given item with `scheduledForDate = today`, it does NOT appear in `watchActiveItems(today)`.
+- Given `deleteItem(id)`, next `watchAllItems()` does not contain that item.
+- No raw Firestore calls outside repository.
+
+---
+
+### Task 3 — TriageService pure logic
+
+**File:** `lib/features/triage/triage_service.dart`
+
+Pure Dart file — no Flutter, Riverpod, or Firestore imports.
+
+**Functions:**
+
 ```dart
-const _kLastCheckInAt = 'timer_last_check_in_at'; // ISO 8601 UTC string
+// Returns brain dump items eligible for today's triage:
+// scheduledForDate is null AND (backloggedUntil is null OR
+// backloggedUntil UTC calendar date <= today UTC calendar date).
+List<BrainDumpItem> todaysBrainDumpItems(
+  List<BrainDumpItem> items,
+  DateTime today,
+);
+
+// Returns recurring tasks that have not yet met their weeklyQuota
+// in the ISO calendar week containing `today` (Monday–Sunday UTC).
+// A task is "pending" if:
+//   completionsThisWeek(task.id, completions, today) < task.weeklyQuota!
+// Only tasks with taskType == recurring and weeklyQuota != null are considered.
+List<Task> pendingRecurringTasks(
+  List<Task> tasks,
+  List<TaskCompletion> completions,
+  DateTime today,
+);
+
+// Helper: count completions for a given taskId whose completedAt falls
+// in the same ISO week as today.
+int completionsThisWeek(
+  String taskId,
+  List<TaskCompletion> completions,
+  DateTime today,
+);
 ```
-`reconcile()` must also restore `lastCheckInAt` and reschedule check-in
-notifications if the app restarts mid-overtime.
 
-**Acceptance criteria:**
+**ISO week definition:** Monday 00:00:00 UTC through Sunday 23:59:59 UTC of the
+week containing `today`.
 
-- Given `startTimer(...)` runs until `elapsedSeconds == targetSeconds`, status
-  transitions to `overtime` and `overtimeSeconds` begins incrementing.
-- Given overtime status and `_onCheckInDue()` fires, `awaitingCheckIn == true`.
-- Given `awaitingCheckIn == true` and `checkIn()` called, `awaitingCheckIn == false`
-  and `lastCheckInAt` is updated.
-- Given `awaitingCheckIn == true` and Dead-Man's Switch fires (5-min timer expires
-  without `checkIn()`), `stopTimer()` is invoked and the resulting `Tracker.durationSeconds`
-  equals `(lastCheckInAt - startedAt).inSeconds`, not the full elapsed time.
-- All existing Sprint 6 TimerNotifier tests still pass.
-- Pure helper `computeElapsed` and `isComplete` unchanged and still pass.
+**Acceptance criteria** (pure Dart unit tests):
+- `todaysBrainDumpItems`: item with null backloggedUntil and null scheduledForDate
+  appears; item with scheduledForDate set does not appear; item backlogged until
+  tomorrow does not appear; item backlogged until yesterday appears.
+- `pendingRecurringTasks`: task with `weeklyQuota: 3` and 2 completions this week
+  appears; same task with 3 completions does not appear; one-time task never appears.
+- `completionsThisWeek`: completions on Monday and Sunday of same week are counted;
+  completion on previous Sunday is not counted.
+- Edge: today is Monday — previous Sunday's completion is NOT in the same week.
 
 ---
 
-### Task 2 — flutter_foreground_task + flutter_local_notifications integration
+### Task 4 — BrainDumpScreen
 
-**New file:** `lib/features/timer/timer_foreground_service.dart`
+**File:** `lib/features/triage/screens/brain_dump_screen.dart`
 
-A thin wrapper class `TimerForegroundService` that:
-- `start(String taskTitle, int targetSeconds)` — calls
-  `FlutterForegroundTask.startService()` with an initial notification using the
-  countdown copy from the Designer's spec.
-- `update(int elapsedSeconds, int targetSeconds, bool isOvertime)` — calls
-  `FlutterForegroundTask.updateService()` with refreshed notification text
-  (countdown or overtime copy). Called by `TimerNotifier._tick()`.
-- `stop()` — calls `FlutterForegroundTask.stopService()`.
-
-**`flutter_local_notifications` integration** (add to `TimerNotifier`):
-- **"Focus goal reached!" notification:** fired once in `_onTargetReached()`.
-  Non-actionable; copy from Designer spec.
-- **"Still Focusing?" check-in notification:** scheduled in
-  `_onCheckInDue()`/`checkIn()`. Two action buttons (tap maps to `checkIn()` or
-  `stopTimer()`). Cancel the pending notification on `checkIn()` and `stopTimer()`.
-- **Auto-stop notification:** fired in `_onDeadMansSwitch()`. Non-actionable;
-  calm, non-shaming copy from Designer spec.
-
-**Platform config (Dev responsibility):**
-
-`android/app/src/main/AndroidManifest.xml`:
-- `FOREGROUND_SERVICE` permission
-- `FOREGROUND_SERVICE_SPECIAL_USE` or `FOREGROUND_SERVICE_MEDIA_PLAYBACK`
-  (check `flutter_foreground_task` docs for current requirement)
-- `USE_EXACT_ALARM` or `SCHEDULE_EXACT_ALARM` permission for
-  `flutter_local_notifications` exact alarms
-- Service declaration for `flutter_foreground_task`'s built-in service class
-
-`ios/Runner/Info.plist`:
-- No background entitlement needed. Add a comment block documenting the iOS
-  strategy: timer start time and last check-in persisted to `shared_preferences`;
-  check-in notifications pre-scheduled via `flutter_local_notifications` at
-  overtime start; reconcile on foreground restores state.
-
-`lib/main.dart`: call `FlutterForegroundTask.init()` with notification channel
-config before `runApp()`.
+Built per the Designer's spec. Uses `brainDumpRepositoryProvider`.
 
 **Acceptance criteria:**
-
-- `TimerForegroundService.start()` calls `FlutterForegroundTask.startService()`
-  (verified by mock/spy in widget test or manual note in handoff).
-- `TimerForegroundService.update()` calls `FlutterForegroundTask.updateService()`.
-- `TimerForegroundService.stop()` calls `FlutterForegroundTask.stopService()`.
-- Platform config files exist with the required entries (Security will verify).
-- `FlutterForegroundTask.init()` is called in `main.dart` before `runApp()`.
-
-Note: `flutter_foreground_task` and `flutter_local_notifications` require device
-or emulator testing for full validation. Provide manual verification steps in
-the handoff (e.g., run on Android emulator, confirm service notification appears).
+- Widget test: 3 active items → 3 items rendered.
+- Widget test: empty inbox → empty state visible.
+- Widget test: submit non-empty text → `addItem` called; text field clears.
+- Widget test: submit empty text → `addItem` NOT called.
+- Widget test: delete action (per Designer's spec) → `deleteItem` called after
+  confirmation (if spec requires it) or immediately (if not).
+- "Start Triage" tap → navigates to `TriageFunnelScreen`.
+- No raw Firestore calls.
 
 ---
 
-### Task 3 — TimerScreen
+### Task 5 — TriageFunnelScreen
 
-**New file:** `lib/features/timer/screens/timer_screen.dart`
+**File:** `lib/features/triage/screens/triage_funnel_screen.dart`
 
-Implements the TimerScreen per the Designer's spec. Receives `Task` as a
-constructor argument (navigated to from `ProjectDetailScreen`).
+Built per the Designer's spec. Takes a combined list of `BrainDumpItem` and
+pending recurring `Task` items as its input (passed from the caller or read
+via providers using `TriageService`).
 
-Behaviour:
-- Reads `timerNotifierProvider` for state.
-- On enter: calls `timerNotifier.startTimer(task.id, task.energyScore)` if
-  state is idle (guard: if already running for a different task, show a
-  "Timer in progress" alert instead of starting a second timer).
-- Displays: task title, timer (MM:SS countdown or overtime countup per state),
-  progress indicator.
-- **Pause/Resume button:** calls `pauseTimer()` / `resumeTimer()`.
-- **Stop button:** shows confirmation dialog (per Designer spec); on confirm calls
-  `stopTimer()` then pops.
-- **Overtime mode:** TimerScreen observes `status == overtime` and switches
-  display per the Designer's spec.
-- **"Still Focusing?" modal:** TimerScreen observes `awaitingCheckIn == true` and
-  shows the in-app modal (per Designer spec). "Yes" calls `checkIn()`;
-  "Stop timer" calls `stopTimer()` then pops.
+Actions per card:
+- **Do Today** → if `BrainDumpItem`: call `updateItem` with `scheduledForDate = today.toUtc()`. If `Task`: create a `TaskCompletion` (with `completedAt = DateTime.now().toUtc()`, `energyScore = task.energyScore`). Advance to next card.
+- **Tomorrow** → if `BrainDumpItem`: call `updateItem` with `backloggedUntil = tomorrow.toUtc()`. If `Task`: no-op (task re-appears tomorrow naturally). Advance to next card.
+- **Remove** → if `BrainDumpItem`: call `deleteItem`. If `Task`: no-op (recurring tasks cannot be deleted from triage). Advance to next card.
 
 **Acceptance criteria:**
-
-- Widget test: rendered with a fake `timerNotifierProvider` in `running` state,
-  task title is visible, countdown display is visible.
-- Widget test: fake provider in `overtime` state → overtime display is visible.
-- Widget test: `awaitingCheckIn == true` → "Still Focusing?" modal is present.
-- Widget test: tap "Yes" in modal → `checkIn()` called on notifier.
-- Widget test: tap Stop → confirmation dialog appears; tap confirm → `stopTimer()` called.
-- No raw `Timer` or `Timer.periodic` in the screen widget (all tick logic stays
-  in `TimerNotifier`).
-- No raw Firestore calls in the screen.
+- Widget test: 2 cards → both rendered sequentially; after swiping/actioning both,
+  completion state ("All caught up!") appears.
+- Widget test: "Do Today" on a BrainDumpItem card → `updateItem` called with
+  non-null `scheduledForDate`.
+- Widget test: "Tomorrow" on a BrainDumpItem card → `updateItem` called with
+  non-null `backloggedUntil` = tomorrow.
+- Widget test: "Remove" on a BrainDumpItem card → `deleteItem` called.
+- Widget test: "Do Today" on a recurring Task card → `addCompletion` called with
+  correct `taskId` and UTC `completedAt`.
+- No raw Firestore calls.
 
 ---
 
-### Task 4 — "Focus" action on task items in ProjectDetailScreen
+## Out of scope for Sprint 8
 
-**File update:** `lib/features/goals/screens/project_detail_screen.dart`
-
-Add a "Focus" tap target to task items per the Designer's spec. On tap:
-navigates to `TimerScreen(task: task)`.
-
-**Acceptance criteria:**
-
-- Widget test: task card in `ProjectDetailScreen` has a "Focus" tap target.
-- Widget test: tapping it pushes `TimerScreen` onto the navigator.
-- Existing `ProjectDetailScreen` widget tests still pass.
-
----
-
-## Out of scope for Sprint 7
-
-- Calendar view / drag-and-drop scheduling
-- Energy tax / capacity warning
-- Task-level `targetSeconds` customisation (all timers default to 25 min)
-- Audio cue on Pomodoro completion (the spec mentions "a slight chirp" — deferred
-  pending a sound-asset decision and `audioplayers` package sign-off)
-- XP / gamification hooks from timer (Gamification sprint)
+- Voice-to-text OS hook (Siri/Google Assistant intents) — Sprint 15
+- Calendar-based scheduling (drag onto calendar) — Sprint 11
+- "Schedule to a specific goal/project" picker — deferred
+- Triage notifications / daily reminder to triage — deferred
 
 ---
 
 ## Approval
 
-- [x] Human operator approved this sprint scope. (2026-05-30)
+- [x] Human operator approved this sprint scope. (2026-05-31)

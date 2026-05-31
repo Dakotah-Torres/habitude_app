@@ -680,3 +680,220 @@ non-shaming.
   validation; document manual verification steps in handoff.
 - Do not add audio, animations beyond subtle progress changes, or new packages this
   sprint.
+
+---
+
+## Sprint 8 visual spec — Brain Dump + Triage
+
+Sprint 8 gives users a low-friction place to put thoughts down and a fast morning
+ritual for deciding what matters today. The experience should feel like clearing a
+table, not managing a backlog. Capture must be effortless; triage must be quick,
+large-target, forgiving, and free of shame.
+
+Use the existing Sedona Sunset palette and Material 3 theme. No new packages are
+required.
+
+### Shared triage principles
+
+- The user is reducing cognitive load, not proving productivity. Use gentle copy
+  and avoid "missed", "failed", "overdue", or "behind".
+- Backlogging to Tomorrow is a valid decision, not avoidance.
+- Remove is a release valve. For brain dump items, require either confirmation or
+  an undo affordance; prefer undo for speed and forgiveness.
+- Triage cards should be large, readable, and action-oriented. A typical 5-item
+  inbox should be clearable in under a minute.
+- Swipe directions must be visible before the user swipes. Always pair gestures
+  with explicit buttons so the workflow is accessible without gesture precision.
+- Use ember for the active "Do Today" path, mesaSky for Tomorrow, and a muted
+  neutral/juniper treatment for Remove. Avoid alarm-red for Remove.
+
+### Navigation entry point
+
+**Decision**
+- Introduce a Material 3 bottom navigation bar at the root of the app.
+- Root shell has two tabs for Sprint 8:
+  - `Goals` — existing `GoalsListScreen`
+  - `Dump` — new `BrainDumpScreen`
+- Do not add Timer as a bottom tab yet. Timer remains task-driven from the Focus
+  action in `ProjectDetailScreen`.
+
+**Rationale**
+- Brain Dump must be reachable quickly from anywhere the root app exposes.
+- A bottom nav is more discoverable and less hidden than an app bar icon, and it
+  sets up future top-level features without forcing triage into the Goals hierarchy.
+
+**Visual treatment**
+- Use Material 3 `NavigationBar`.
+- Labels: "Goals" and "Dump".
+- Icons: outlined flag/list icon for Goals; inbox/tray or note icon for Dump.
+- Selected state uses juniper or ember sparingly through the theme. Keep the bar
+  quiet; this is navigation, not achievement.
+- Preserve Sprint 5 root content width constraints inside each tab.
+
+### `BrainDumpScreen`
+
+**Purpose**
+- Inbox for unstructured thoughts. Users can add a thought immediately, see active
+  items, remove items, and start triage.
+
+**Layout**
+- `Scaffold` inside the root shell/tab.
+- App bar or top header title: "Brain Dump".
+- Content constrained to about 720 px on wide screens with 16 px phone padding.
+- Top capture area:
+  - Multi-line `TextField` with hint "Drop the thought here."
+  - Primary action button "Add" with plus/send icon.
+  - Keep the input visible above the list so capture is always one step.
+- Below capture: list of active brain dump items from newest to oldest.
+- Bottom or trailing action: "Start triage".
+  - Use a filled button on the screen when there are items.
+  - Use an extended FAB only if it does not crowd the input.
+
+**Data shown**
+- `BrainDumpItem.text`: primary text, max 3 lines in the list, ellipsis after that.
+- `createdAt`: relative timestamp in quiet caption text:
+  - "Just now", "12 min ago", "Yesterday", or "May 31".
+- Do not show item IDs, raw timestamps, `backloggedUntil`, or `scheduledForDate`
+  in the inbox list.
+
+**User actions**
+- Add:
+  - Non-empty trimmed text calls `addItem`.
+  - Empty/whitespace-only text does nothing and may show inline helper text:
+    "Write the thought first."
+  - On successful add, clear the field and keep focus in the field for fast capture.
+- Delete/remove item:
+  - Use swipe-to-dismiss or trailing overflow action, but provide undo via
+    `SnackBar` when possible: "Removed from brain dump" + "Undo".
+  - If undo is not feasible with repository shape, use a confirmation dialog:
+    Title "Remove this thought?"
+    Body "This clears it from the dump. No shame if it was just noise."
+    Actions "Keep it" and "Remove".
+- Start triage:
+  - Visible as "Start triage" when active brain dump items or pending recurring
+    tasks exist.
+  - Disabled, not hidden, when there is nothing to triage. Disabled helper:
+    "Nothing waiting right now."
+  - Tapping opens `TriageFunnelScreen`.
+
+**Empty state**
+- Show centered calm empty state below the capture area:
+  - Icon: inbox/note outline.
+  - Title: "Nothing rattling around."
+  - Body: "When a thought shows up, drop it here and keep moving."
+- The capture field remains visible in empty state.
+- "Start triage" is disabled with "Nothing waiting right now."
+
+**Loading state**
+- Keep capture field visible.
+- List area shows centered progress with "Loading brain dump".
+
+**Error state**
+- Keep capture field visible.
+- List area shows calm panel:
+  - "Brain dump did not load"
+  - "Your capture space is still here. Try again in a moment."
+
+### `TriageFunnelScreen`
+
+**Purpose**
+- One-card-at-a-time decision flow for active brain dump items and pending
+  recurring tasks.
+
+**Layout**
+- `Scaffold` pushed from `BrainDumpScreen`.
+- App bar title: "Triage".
+- Body constrained to about 720 px on wide screens.
+- Top progress text:
+  - "`N` left" or "Card `i` of `n`".
+  - Keep it low-emphasis.
+- Center: one large card occupying most of the screen height.
+- Bottom: three explicit action buttons in a stable row or stacked layout on small
+  phones:
+  - "Tomorrow"
+  - "Remove"
+  - "Do Today"
+- Gesture support:
+  - Right swipe = Do Today.
+  - Left swipe = Tomorrow.
+  - Down swipe = Remove.
+- Buttons must remain available even if swipe is implemented.
+
+**Swipe direction indicators**
+- Resting card shows subtle directional hints:
+  - Right edge: ember play/check icon + "Do Today".
+  - Left edge: mesaSky arrow/clock icon + "Tomorrow".
+  - Bottom edge: muted down arrow + "Remove".
+- While dragging, tint the relevant edge/action and scale opacity softly.
+- Motion should be brief and restrained. No dramatic fling animations or harsh
+  warning colors.
+
+**Brain dump item card content**
+- Eyebrow chip: "Brain dump".
+- Main text: `BrainDumpItem.text`, large, readable, wraps naturally.
+- Caption: relative created time.
+- Support copy below actions or in card footer:
+  "Decide where this thought belongs for now."
+
+**Recurring task card content**
+- Eyebrow chip: "Recurring task".
+- Main title: `Task.title`.
+- Energy indicator: "`N` energy" with the same effort framing from Sprint 5.
+- Weekly quota progress:
+  - "`x` of `weeklyQuota` this week"
+  - If `x == 0`, show "Not started this week" only if space allows; do not shame.
+- Support copy:
+  "A small check-in keeps the rhythm alive."
+
+**Actions**
+- Do Today:
+  - Brain dump item: set `scheduledForDate = today.toUtc()` and advance.
+  - Recurring task: create `TaskCompletion` with `completedAt = DateTime.now().toUtc()`
+    and `energyScore = task.energyScore`, then advance.
+  - Visual: ember filled/tonal action, positive but not flashy.
+- Tomorrow:
+  - Brain dump item: set `backloggedUntil = tomorrow.toUtc()` and advance.
+  - Recurring task: no-op and advance; it naturally appears again tomorrow if still
+    pending.
+  - Visual: mesaSky tonal action.
+  - Copy/tone: "Tomorrow" means "not now", not failure.
+- Remove:
+  - Brain dump item: delete and advance.
+  - Recurring task: no-op and advance; do not delete recurring tasks from triage.
+  - Visual: neutral outlined action with down/remove icon.
+  - Copy/tone: removing clears noise.
+
+**Completion state**
+- When all cards are processed, show centered calm success:
+  - Title: "All caught up!"
+  - Body: "Your head is clearer. You can come back if more shows up."
+  - Primary action: "Done" pops back to `BrainDumpScreen`.
+- Use a small saguaro success accent. Reserve pricklyPear unless this later ties
+  into gamification; this sprint should stay calm.
+
+**Loading state**
+- Centered progress with "Building today’s triage".
+
+**Error state**
+- Calm error panel:
+  - "Triage did not load"
+  - "Nothing is lost. Try again when you are ready."
+
+### Triage copy reference
+
+- Do Today helper: "Put this in today’s lane."
+- Tomorrow helper: "Let this wait without guilt."
+- Remove helper: "Clear it if it is just noise."
+- Completion: "All caught up!"
+
+### Sprint 8 implementation notes for Dev
+
+- No raw Firestore calls in screens/widgets.
+- All new `DateTime` values must use UTC (`DateTime.now().toUtc()`).
+- For date-only values (`scheduledForDate`, `backloggedUntil`), normalize to the
+  UTC calendar date for today/tomorrow.
+- Do not build a calendar picker or schedule-to-specific-date flow this sprint.
+- Do not add packages for swipe cards. Use Flutter gestures/`Dismissible`/custom
+  pointer handling with explicit buttons as fallback.
+- If bottom navigation is introduced, keep route/state simple and use built-in
+  Flutter navigation; no routing package.

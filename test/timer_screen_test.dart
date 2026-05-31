@@ -66,9 +66,7 @@ void main() {
 
       await tester.pumpWidget(
         ProviderScope(
-          overrides: [
-            timerNotifierProvider.overrideWith(() => fakeNotifier),
-          ],
+          overrides: [timerNotifierProvider.overrideWith(() => fakeNotifier)],
           child: MaterialApp(
             theme: AppTheme.light,
             home: TimerScreen(task: task),
@@ -81,7 +79,9 @@ void main() {
       expect(find.text('24:00'), findsOneWidget);
     });
 
-    testWidgets('shows overtime display when status is overtime', (tester) async {
+    testWidgets('shows overtime display when status is overtime', (
+      tester,
+    ) async {
       final fakeNotifier = FakeTimerNotifier();
       fakeNotifier.manualState = TimerState(
         status: TimerStatus.overtime,
@@ -93,9 +93,7 @@ void main() {
 
       await tester.pumpWidget(
         ProviderScope(
-          overrides: [
-            timerNotifierProvider.overrideWith(() => fakeNotifier),
-          ],
+          overrides: [timerNotifierProvider.overrideWith(() => fakeNotifier)],
           child: MaterialApp(
             theme: AppTheme.light,
             home: TimerScreen(task: task),
@@ -107,7 +105,9 @@ void main() {
       expect(find.text('Overtime'), findsOneWidget);
     });
 
-    testWidgets('shows check-in modal when awaitingCheckIn is true', (tester) async {
+    testWidgets('shows check-in modal when awaitingCheckIn is true', (
+      tester,
+    ) async {
       final fakeNotifier = FakeTimerNotifier();
       fakeNotifier.manualState = TimerState(
         status: TimerStatus.overtime,
@@ -117,9 +117,7 @@ void main() {
 
       await tester.pumpWidget(
         ProviderScope(
-          overrides: [
-            timerNotifierProvider.overrideWith(() => fakeNotifier),
-          ],
+          overrides: [timerNotifierProvider.overrideWith(() => fakeNotifier)],
           child: MaterialApp(
             theme: AppTheme.light,
             home: TimerScreen(task: task),
@@ -130,7 +128,7 @@ void main() {
       await tester.pump(); // Handle post-frame or listen
 
       expect(find.text('Still focusing?'), findsOneWidget);
-      
+
       await tester.tap(find.text('Yes, still here'));
       expect(fakeNotifier.checkInCalled, isTrue);
     });
@@ -144,9 +142,7 @@ void main() {
 
       await tester.pumpWidget(
         ProviderScope(
-          overrides: [
-            timerNotifierProvider.overrideWith(() => fakeNotifier),
-          ],
+          overrides: [timerNotifierProvider.overrideWith(() => fakeNotifier)],
           child: MaterialApp(
             theme: AppTheme.light,
             home: TimerScreen(task: task),
@@ -158,20 +154,20 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Stop this focus session?'), findsOneWidget);
-      
+
       await tester.tap(find.text('Stop timer'));
       expect(fakeNotifier.stopCalled, isTrue);
     });
 
-    testWidgets('shows calm error panel when timer start fails', (tester) async {
+    testWidgets('shows calm error panel when timer start fails', (
+      tester,
+    ) async {
       final fakeNotifier = FakeTimerNotifier();
       fakeNotifier.shouldFailStart = true;
 
       await tester.pumpWidget(
         ProviderScope(
-          overrides: [
-            timerNotifierProvider.overrideWith(() => fakeNotifier),
-          ],
+          overrides: [timerNotifierProvider.overrideWith(() => fakeNotifier)],
           child: MaterialApp(
             theme: AppTheme.light,
             home: TimerScreen(task: task),
