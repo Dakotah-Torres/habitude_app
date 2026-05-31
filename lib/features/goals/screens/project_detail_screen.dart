@@ -6,6 +6,7 @@ import 'package:habitude/features/goals/task.dart';
 import 'package:habitude/features/goals/tasks_repository.dart';
 import 'package:habitude/features/goals/screens/project_form_screen.dart';
 import 'package:habitude/features/goals/screens/task_form_screen.dart';
+import 'package:habitude/features/timer/screens/timer_screen.dart';
 import 'package:habitude/shared/theme.dart';
 
 class ProjectDetailScreen extends ConsumerStatefulWidget {
@@ -351,22 +352,37 @@ class _TaskCard extends ConsumerWidget {
             ],
           ),
         ),
-        trailing: PopupMenuButton<String>(
-          onSelected: (value) {
-            if (value == 'edit') {
-              Navigator.push(
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            IconButton(
+              onPressed: () => Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (_) => TaskFormScreen(initialTask: task),
+                  builder: (_) => TimerScreen(task: task),
                 ),
-              );
-            } else if (value == 'delete') {
-              _confirmDeleteTask(context, ref, task);
-            }
-          },
-          itemBuilder: (context) => [
-            const PopupMenuItem(value: 'edit', child: Text('Edit task')),
-            const PopupMenuItem(value: 'delete', child: Text('Delete task')),
+              ),
+              icon: const Icon(Icons.play_circle_filled, color: AppColors.ember),
+              tooltip: 'Focus',
+            ),
+            PopupMenuButton<String>(
+              onSelected: (value) {
+                if (value == 'edit') {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => TaskFormScreen(initialTask: task),
+                    ),
+                  );
+                } else if (value == 'delete') {
+                  _confirmDeleteTask(context, ref, task);
+                }
+              },
+              itemBuilder: (context) => [
+                const PopupMenuItem(value: 'edit', child: Text('Edit task')),
+                const PopupMenuItem(value: 'delete', child: Text('Delete task')),
+              ],
+            ),
           ],
         ),
       ),

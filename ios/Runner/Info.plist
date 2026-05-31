@@ -45,5 +45,13 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	<!-- 
+	  iOS Timer Strategy:
+	  Background execution entitlement is not used to minimize battery impact and app-store friction.
+	  - Timer start time and last check-in are persisted to shared_preferences.
+	  - All check-in notifications (30m, 60m, etc.) are pre-scheduled via flutter_local_notifications at overtime start.
+	  - Dead-man's switch logic runs on app foreground/reconcile by comparing startedAt/lastCheckInAt with current time.
+	  - Foreground service is Android-only; iOS relies on local notification pings.
+	-->
 </dict>
 </plist>

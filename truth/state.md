@@ -8,7 +8,7 @@
 
 **Sprint 7** — Timer UI + Overtime Mechanic + Dead-Man's Switch.
 UI sprint — Designer pre-specs before Dev builds.
-See `truth/sprint.md`. Status: **awaiting human approval (2026-05-30).**
+See `truth/sprint.md`. Status: **approved 2026-05-30 — Designer active (pre-spec).**
 
 ## Locked decisions
 

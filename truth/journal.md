@@ -54,3 +54,7 @@
 [S6][Dev] Implemented Timer Core: Tracker model/repo, TimerState, and TimerNotifier with persistence. All tests pass (92 total). → Optimization
 [S6][Opt] Reviewed Timer Core, fixed resume persistence/provider disposal/provider naming, added coverage. dart analyze and flutter test pass; flutter analyze still blocked by local tool crash. → Security
 [S6][Security] Reviewed Sprint 6 Timer Core. No vulnerabilities. Firestore rules already cover trackers via recursive wildcard. UTC compliance confirmed. Two LOW tracking items (unguarded DateTime.parse in reconcile; force-unwrap startedAt in stopTimer). Clean approval. → PM
+[S6][PM] Sprint 6 closed. 93 tests pass, dart analyze clean, Security clean. Two LOW items added to open/deferred. Sprint 7 scoped (Timer UI + foreground service + Overtime + Dead-Man's Switch). Awaiting human approval. → Human
+[S7][PM] Sprint 7 approved by human operator. Handed to Designer for pre-spec. → Designer
+[S7][Designer] Added Timer UI visual spec for TimerScreen, overtime, check-in modal, task Focus action, and notification copy to truth/design.md. → Dev
+[S7][Dev] Implemented Timer UI, Overtime, and Dead-Man's Switch. Integrated foreground/notification services. All tests pass (99 total). → Optimization

@@ -476,3 +476,207 @@ pickers unless PM records sign-off in `truth/state.md`.
 - If `google_fonts` has not been PM-approved by implementation time, use the
   current Material 3 text theme and map hierarchy through `TextTheme` styles rather
   than adding the package.
+
+---
+
+## Sprint 7 visual spec — Timer UI
+
+Sprint 7 makes focus feel visible, protected, and worth celebrating. The timer
+should be the quietest screen in the app until the user earns overtime. It is a
+workspace, not an alarm clock: readable at a glance, low clutter, forgiving when
+focus runs long, and never punitive when the app auto-stops.
+
+Use the existing Sedona Sunset tokens and Material 3 theme. No new design
+dependencies are required.
+
+### Shared timer principles
+
+- The screen has one focal point: the time. Keep surrounding UI sparse.
+- Use tabular figures for the timer display. If custom font packages are not
+  PM-approved, use the current Material 3 text theme with `FontFeature.tabularFigures()`.
+- Countdown mode is calm and grounded: juniper/sand/mesaSky surfaces, ember only
+  for progress/action emphasis.
+- Overtime mode is earned energy: keep the layout stable, but shift emphasis to
+  ember with a small pricklyPear spark only for achievement copy. Do not make the
+  whole screen hot.
+- Pause and Stop must be visually distinct:
+  - Pause/Resume: secondary/tonal button, calm mesaSky/juniper treatment.
+  - Stop: outlined or text-destructive action with a required confirmation dialog.
+    It must never look like the primary reward action.
+- Avoid red alarm language. Stopping is a user choice; auto-stop is protection.
+- TimerScreen content should be centered and constrained around 720 px on wide
+  screens, matching Sprint 5 layout constraints.
+
+### TimerScreen — countdown mode
+
+**Route and source**
+- `TimerScreen(task: task)` is pushed from a "Focus" action on a task card in
+  `ProjectDetailScreen`.
+- On entry, if no timer is active, the screen starts the timer for that task.
+- If another timer is already running for a different task, show a calm alert
+  instead of starting a second timer.
+
+**Layout**
+- `Scaffold` with a simple app bar title "Focus". Use a back affordance only if it
+  does not stop the timer; leaving the screen should not imply stop.
+- Body is a centered vertical stack:
+  1. Small eyebrow label: "Focusing on"
+  2. Task title, max 3 lines, centered.
+  3. Large timer display in `MM:SS`.
+  4. Circular progress ring preferred; a linear progress bar is acceptable if it is
+     calmer/easier to implement. The ring/bar progresses from 0 to target.
+  5. Status helper text: "Stay with this until the bell."
+  6. Controls row: Pause/Resume and Stop.
+- The timer display should be the largest text on the screen. It must remain
+  readable with system text scaling and should not wrap.
+
+**Data shown**
+- `Task.title`: visible near the top.
+- Countdown: remaining time as `MM:SS`, computed from
+  `targetSeconds - elapsedSeconds`, clamped at 0.
+- Progress: `elapsedSeconds / targetSeconds`, clamped between 0 and 1.
+- Do not show raw tracker IDs, task IDs, or energy math on this screen.
+
+**Controls**
+- Pause button:
+  - Label "Pause" while running.
+  - Label "Resume" while paused.
+  - Use a tonal/secondary Material button with pause/play icon.
+- Stop button:
+  - Label "Stop".
+  - Use an outlined button or text button with stop icon.
+  - Opens confirmation dialog before `stopTimer()`.
+
+**Stop confirmation**
+- Title: "Stop this focus session?"
+- Body: "We will save the focus time you have already logged."
+- Actions:
+  - "Keep focusing" (default/cancel)
+  - "Stop timer" (confirms)
+- On confirm, call `stopTimer()` and pop back to the source screen.
+
+**Loading/error/empty**
+- TimerScreen should not have an empty state; it always receives a `Task`.
+- If timer start fails, show an inline calm error panel:
+  "Timer did not start" and "Nothing was logged. Try again when you are ready."
+- If another timer is active, alert title "Timer already running" and body
+  "Finish or stop the current session before starting another."
+
+### TimerScreen — overtime mode
+
+**Transition**
+- When countdown reaches zero, keep the same screen structure so the user does not
+  lose orientation.
+- Change the status label from countdown copy to achievement copy:
+  "Focus goal reached — overtime is yours if you want it."
+- The progress ring/bar becomes complete and may glow or tint ember softly. Do not
+  animate aggressively.
+
+**Display**
+- Timer display switches from countdown `MM:SS` to count-up overtime.
+- Format: `+MM:SS` for under one hour, `+H:MM:SS` after one hour.
+- Add a small label above or below: "Overtime".
+- Overtime count starts at `+00:00` and increments from `overtimeSeconds`.
+
+**Tone**
+- Overtime is positive hyperfocus, not a warning.
+- Approved support copy:
+  - "You hit the goal. Keep riding the focus if it still feels good."
+  - "Overtime is bonus focus, not a debt."
+- Do not use "overdue", "late", "behind", "exceeded", or alarm-red styling.
+
+**Controls**
+- Pause/Resume and Stop remain in the same positions as countdown mode.
+- Stop confirmation copy remains protective:
+  "We will save the focus time you have already logged."
+
+### "Still Focusing?" in-app modal
+
+**Trigger**
+- Shown by TimerScreen when `TimerState.awaitingCheckIn == true`, every 30 minutes
+  during overtime.
+- Present as a Material `AlertDialog` or bottom sheet. Use `AlertDialog` for the
+  first implementation because it is testable and direct.
+
+**Copy**
+- Title: "Still focusing?"
+- Body: "No pressure. If you are still in it, we will keep overtime going. If not,
+  we can stop here and protect your energy record."
+
+**Actions**
+- Primary/affirming action: "Yes, still here"
+  - Calls `checkIn()`.
+  - Closes the modal.
+  - Keeps timer in overtime.
+- Secondary protective action: "Stop timer"
+  - Calls `stopTimer()`.
+  - Closes modal and pops back to the source screen.
+
+**Visual treatment**
+- Calm sand/surface background with juniper text.
+- The "Yes, still here" action may use ember because it renews active focus.
+- "Stop timer" remains secondary/outlined. Do not style it as failure.
+
+### "Focus" action on task cards in `ProjectDetailScreen`
+
+**Location**
+- Add a visible "Focus" tap target on each task card, not only inside the overflow
+  menu. It should be easy to find because focus is the app's central workflow.
+- Recommended layout:
+  - Keep task title, energy indicator, task type chip, and quota text as-is.
+  - Add a trailing compact filled/tonal button with play icon and label "Focus".
+  - Keep the overflow menu for Edit/Delete next to it or in the trailing row.
+- If horizontal space is tight, use an icon-only play button with tooltip "Focus";
+  widget tests can still find it by tooltip/semantic label.
+
+**Behavior**
+- Tap "Focus" pushes `TimerScreen(task: task)`.
+- Existing tap/edit behavior should remain available, but Focus must not be hidden
+  behind long-press or a destructive menu.
+
+**Visual treatment**
+- Use ember sparingly for the play icon or button fill; this is an intentional
+  start-focus action.
+- Button must be at least 44 px high/tall target where feasible.
+
+### Notification copy for Dev reference
+
+Keep notifications short; they may be truncated by the OS. All copy is calm and
+non-shaming.
+
+**Foreground service — countdown**
+- Title: "Focusing: {taskTitle}"
+- Body: "{remaining} left in this focus session"
+- Example body: "18:42 left in this focus session"
+
+**Foreground service — overtime**
+- Title: "Overtime focus: {taskTitle}"
+- Body: "+{overtime} bonus focus logged"
+- Example body: "+12:08 bonus focus logged"
+
+**Pomodoro completion / overtime start**
+- Title: "Focus goal reached"
+- Body: "Overtime is yours if you want it."
+
+**Still Focusing? check-in notification**
+- Title: "Still focusing?"
+- Body: "Tap to keep overtime going, or stop here and save what you logged."
+- Action button labels:
+  - "Yes, still here"
+  - "Stop timer"
+
+**Auto-stop / Dead-Man's Switch notification**
+- Title: "Timer paused for you"
+- Body: "We saved your confirmed focus time and stopped the timer to protect your energy record."
+
+### Sprint 7 implementation notes for Dev
+
+- No raw `Timer` or `Timer.periodic` in `TimerScreen`; all tick logic stays in
+  `TimerNotifier`.
+- No raw Firestore calls in screens/widgets.
+- All new `DateTime` values created by TimerNotifier, notification scheduling, and
+  Dead-Man's Switch logic must use UTC (`DateTime.now().toUtc()`).
+- Foreground service and local notification integration may require emulator/device
+  validation; document manual verification steps in handoff.
+- Do not add audio, animations beyond subtle progress changes, or new packages this
+  sprint.

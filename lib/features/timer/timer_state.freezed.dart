@@ -14,7 +14,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$TimerState {
 
- TimerStatus get status; String? get taskId; String? get trackerId; int get energyScore; int get targetSeconds; int get elapsedSeconds; DateTime? get startedAt;
+ TimerStatus get status; String? get taskId; String? get trackerId; int get energyScore; int get targetSeconds; int get elapsedSeconds; int get overtimeSeconds; DateTime? get startedAt; DateTime? get lastCheckInAt; bool get awaitingCheckIn;
 /// Create a copy of TimerState
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -25,16 +25,16 @@ $TimerStateCopyWith<TimerState> get copyWith => _$TimerStateCopyWithImpl<TimerSt
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is TimerState&&(identical(other.status, status) || other.status == status)&&(identical(other.taskId, taskId) || other.taskId == taskId)&&(identical(other.trackerId, trackerId) || other.trackerId == trackerId)&&(identical(other.energyScore, energyScore) || other.energyScore == energyScore)&&(identical(other.targetSeconds, targetSeconds) || other.targetSeconds == targetSeconds)&&(identical(other.elapsedSeconds, elapsedSeconds) || other.elapsedSeconds == elapsedSeconds)&&(identical(other.startedAt, startedAt) || other.startedAt == startedAt));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is TimerState&&(identical(other.status, status) || other.status == status)&&(identical(other.taskId, taskId) || other.taskId == taskId)&&(identical(other.trackerId, trackerId) || other.trackerId == trackerId)&&(identical(other.energyScore, energyScore) || other.energyScore == energyScore)&&(identical(other.targetSeconds, targetSeconds) || other.targetSeconds == targetSeconds)&&(identical(other.elapsedSeconds, elapsedSeconds) || other.elapsedSeconds == elapsedSeconds)&&(identical(other.overtimeSeconds, overtimeSeconds) || other.overtimeSeconds == overtimeSeconds)&&(identical(other.startedAt, startedAt) || other.startedAt == startedAt)&&(identical(other.lastCheckInAt, lastCheckInAt) || other.lastCheckInAt == lastCheckInAt)&&(identical(other.awaitingCheckIn, awaitingCheckIn) || other.awaitingCheckIn == awaitingCheckIn));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,status,taskId,trackerId,energyScore,targetSeconds,elapsedSeconds,startedAt);
+int get hashCode => Object.hash(runtimeType,status,taskId,trackerId,energyScore,targetSeconds,elapsedSeconds,overtimeSeconds,startedAt,lastCheckInAt,awaitingCheckIn);
 
 @override
 String toString() {
-  return 'TimerState(status: $status, taskId: $taskId, trackerId: $trackerId, energyScore: $energyScore, targetSeconds: $targetSeconds, elapsedSeconds: $elapsedSeconds, startedAt: $startedAt)';
+  return 'TimerState(status: $status, taskId: $taskId, trackerId: $trackerId, energyScore: $energyScore, targetSeconds: $targetSeconds, elapsedSeconds: $elapsedSeconds, overtimeSeconds: $overtimeSeconds, startedAt: $startedAt, lastCheckInAt: $lastCheckInAt, awaitingCheckIn: $awaitingCheckIn)';
 }
 
 
@@ -45,7 +45,7 @@ abstract mixin class $TimerStateCopyWith<$Res>  {
   factory $TimerStateCopyWith(TimerState value, $Res Function(TimerState) _then) = _$TimerStateCopyWithImpl;
 @useResult
 $Res call({
- TimerStatus status, String? taskId, String? trackerId, int energyScore, int targetSeconds, int elapsedSeconds, DateTime? startedAt
+ TimerStatus status, String? taskId, String? trackerId, int energyScore, int targetSeconds, int elapsedSeconds, int overtimeSeconds, DateTime? startedAt, DateTime? lastCheckInAt, bool awaitingCheckIn
 });
 
 
@@ -62,7 +62,7 @@ class _$TimerStateCopyWithImpl<$Res>
 
 /// Create a copy of TimerState
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? status = null,Object? taskId = freezed,Object? trackerId = freezed,Object? energyScore = null,Object? targetSeconds = null,Object? elapsedSeconds = null,Object? startedAt = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? status = null,Object? taskId = freezed,Object? trackerId = freezed,Object? energyScore = null,Object? targetSeconds = null,Object? elapsedSeconds = null,Object? overtimeSeconds = null,Object? startedAt = freezed,Object? lastCheckInAt = freezed,Object? awaitingCheckIn = null,}) {
   return _then(_self.copyWith(
 status: null == status ? _self.status : status // ignore: cast_nullable_to_non_nullable
 as TimerStatus,taskId: freezed == taskId ? _self.taskId : taskId // ignore: cast_nullable_to_non_nullable
@@ -70,8 +70,11 @@ as String?,trackerId: freezed == trackerId ? _self.trackerId : trackerId // igno
 as String?,energyScore: null == energyScore ? _self.energyScore : energyScore // ignore: cast_nullable_to_non_nullable
 as int,targetSeconds: null == targetSeconds ? _self.targetSeconds : targetSeconds // ignore: cast_nullable_to_non_nullable
 as int,elapsedSeconds: null == elapsedSeconds ? _self.elapsedSeconds : elapsedSeconds // ignore: cast_nullable_to_non_nullable
+as int,overtimeSeconds: null == overtimeSeconds ? _self.overtimeSeconds : overtimeSeconds // ignore: cast_nullable_to_non_nullable
 as int,startedAt: freezed == startedAt ? _self.startedAt : startedAt // ignore: cast_nullable_to_non_nullable
-as DateTime?,
+as DateTime?,lastCheckInAt: freezed == lastCheckInAt ? _self.lastCheckInAt : lastCheckInAt // ignore: cast_nullable_to_non_nullable
+as DateTime?,awaitingCheckIn: null == awaitingCheckIn ? _self.awaitingCheckIn : awaitingCheckIn // ignore: cast_nullable_to_non_nullable
+as bool,
   ));
 }
 
@@ -156,10 +159,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( TimerStatus status,  String? taskId,  String? trackerId,  int energyScore,  int targetSeconds,  int elapsedSeconds,  DateTime? startedAt)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( TimerStatus status,  String? taskId,  String? trackerId,  int energyScore,  int targetSeconds,  int elapsedSeconds,  int overtimeSeconds,  DateTime? startedAt,  DateTime? lastCheckInAt,  bool awaitingCheckIn)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _TimerState() when $default != null:
-return $default(_that.status,_that.taskId,_that.trackerId,_that.energyScore,_that.targetSeconds,_that.elapsedSeconds,_that.startedAt);case _:
+return $default(_that.status,_that.taskId,_that.trackerId,_that.energyScore,_that.targetSeconds,_that.elapsedSeconds,_that.overtimeSeconds,_that.startedAt,_that.lastCheckInAt,_that.awaitingCheckIn);case _:
   return orElse();
 
 }
@@ -177,10 +180,10 @@ return $default(_that.status,_that.taskId,_that.trackerId,_that.energyScore,_tha
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( TimerStatus status,  String? taskId,  String? trackerId,  int energyScore,  int targetSeconds,  int elapsedSeconds,  DateTime? startedAt)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( TimerStatus status,  String? taskId,  String? trackerId,  int energyScore,  int targetSeconds,  int elapsedSeconds,  int overtimeSeconds,  DateTime? startedAt,  DateTime? lastCheckInAt,  bool awaitingCheckIn)  $default,) {final _that = this;
 switch (_that) {
 case _TimerState():
-return $default(_that.status,_that.taskId,_that.trackerId,_that.energyScore,_that.targetSeconds,_that.elapsedSeconds,_that.startedAt);case _:
+return $default(_that.status,_that.taskId,_that.trackerId,_that.energyScore,_that.targetSeconds,_that.elapsedSeconds,_that.overtimeSeconds,_that.startedAt,_that.lastCheckInAt,_that.awaitingCheckIn);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -197,10 +200,10 @@ return $default(_that.status,_that.taskId,_that.trackerId,_that.energyScore,_tha
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( TimerStatus status,  String? taskId,  String? trackerId,  int energyScore,  int targetSeconds,  int elapsedSeconds,  DateTime? startedAt)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( TimerStatus status,  String? taskId,  String? trackerId,  int energyScore,  int targetSeconds,  int elapsedSeconds,  int overtimeSeconds,  DateTime? startedAt,  DateTime? lastCheckInAt,  bool awaitingCheckIn)?  $default,) {final _that = this;
 switch (_that) {
 case _TimerState() when $default != null:
-return $default(_that.status,_that.taskId,_that.trackerId,_that.energyScore,_that.targetSeconds,_that.elapsedSeconds,_that.startedAt);case _:
+return $default(_that.status,_that.taskId,_that.trackerId,_that.energyScore,_that.targetSeconds,_that.elapsedSeconds,_that.overtimeSeconds,_that.startedAt,_that.lastCheckInAt,_that.awaitingCheckIn);case _:
   return null;
 
 }
@@ -212,7 +215,7 @@ return $default(_that.status,_that.taskId,_that.trackerId,_that.energyScore,_tha
 
 
 class _TimerState implements TimerState {
-  const _TimerState({required this.status, this.taskId, this.trackerId, this.energyScore = 0, this.targetSeconds = 1500, this.elapsedSeconds = 0, this.startedAt});
+  const _TimerState({required this.status, this.taskId, this.trackerId, this.energyScore = 0, this.targetSeconds = 1500, this.elapsedSeconds = 0, this.overtimeSeconds = 0, this.startedAt, this.lastCheckInAt, this.awaitingCheckIn = false});
   
 
 @override final  TimerStatus status;
@@ -221,7 +224,10 @@ class _TimerState implements TimerState {
 @override@JsonKey() final  int energyScore;
 @override@JsonKey() final  int targetSeconds;
 @override@JsonKey() final  int elapsedSeconds;
+@override@JsonKey() final  int overtimeSeconds;
 @override final  DateTime? startedAt;
+@override final  DateTime? lastCheckInAt;
+@override@JsonKey() final  bool awaitingCheckIn;
 
 /// Create a copy of TimerState
 /// with the given fields replaced by the non-null parameter values.
@@ -233,16 +239,16 @@ _$TimerStateCopyWith<_TimerState> get copyWith => __$TimerStateCopyWithImpl<_Tim
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _TimerState&&(identical(other.status, status) || other.status == status)&&(identical(other.taskId, taskId) || other.taskId == taskId)&&(identical(other.trackerId, trackerId) || other.trackerId == trackerId)&&(identical(other.energyScore, energyScore) || other.energyScore == energyScore)&&(identical(other.targetSeconds, targetSeconds) || other.targetSeconds == targetSeconds)&&(identical(other.elapsedSeconds, elapsedSeconds) || other.elapsedSeconds == elapsedSeconds)&&(identical(other.startedAt, startedAt) || other.startedAt == startedAt));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _TimerState&&(identical(other.status, status) || other.status == status)&&(identical(other.taskId, taskId) || other.taskId == taskId)&&(identical(other.trackerId, trackerId) || other.trackerId == trackerId)&&(identical(other.energyScore, energyScore) || other.energyScore == energyScore)&&(identical(other.targetSeconds, targetSeconds) || other.targetSeconds == targetSeconds)&&(identical(other.elapsedSeconds, elapsedSeconds) || other.elapsedSeconds == elapsedSeconds)&&(identical(other.overtimeSeconds, overtimeSeconds) || other.overtimeSeconds == overtimeSeconds)&&(identical(other.startedAt, startedAt) || other.startedAt == startedAt)&&(identical(other.lastCheckInAt, lastCheckInAt) || other.lastCheckInAt == lastCheckInAt)&&(identical(other.awaitingCheckIn, awaitingCheckIn) || other.awaitingCheckIn == awaitingCheckIn));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,status,taskId,trackerId,energyScore,targetSeconds,elapsedSeconds,startedAt);
+int get hashCode => Object.hash(runtimeType,status,taskId,trackerId,energyScore,targetSeconds,elapsedSeconds,overtimeSeconds,startedAt,lastCheckInAt,awaitingCheckIn);
 
 @override
 String toString() {
-  return 'TimerState(status: $status, taskId: $taskId, trackerId: $trackerId, energyScore: $energyScore, targetSeconds: $targetSeconds, elapsedSeconds: $elapsedSeconds, startedAt: $startedAt)';
+  return 'TimerState(status: $status, taskId: $taskId, trackerId: $trackerId, energyScore: $energyScore, targetSeconds: $targetSeconds, elapsedSeconds: $elapsedSeconds, overtimeSeconds: $overtimeSeconds, startedAt: $startedAt, lastCheckInAt: $lastCheckInAt, awaitingCheckIn: $awaitingCheckIn)';
 }
 
 
@@ -253,7 +259,7 @@ abstract mixin class _$TimerStateCopyWith<$Res> implements $TimerStateCopyWith<$
   factory _$TimerStateCopyWith(_TimerState value, $Res Function(_TimerState) _then) = __$TimerStateCopyWithImpl;
 @override @useResult
 $Res call({
- TimerStatus status, String? taskId, String? trackerId, int energyScore, int targetSeconds, int elapsedSeconds, DateTime? startedAt
+ TimerStatus status, String? taskId, String? trackerId, int energyScore, int targetSeconds, int elapsedSeconds, int overtimeSeconds, DateTime? startedAt, DateTime? lastCheckInAt, bool awaitingCheckIn
 });
 
 
@@ -270,7 +276,7 @@ class __$TimerStateCopyWithImpl<$Res>
 
 /// Create a copy of TimerState
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? status = null,Object? taskId = freezed,Object? trackerId = freezed,Object? energyScore = null,Object? targetSeconds = null,Object? elapsedSeconds = null,Object? startedAt = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? status = null,Object? taskId = freezed,Object? trackerId = freezed,Object? energyScore = null,Object? targetSeconds = null,Object? elapsedSeconds = null,Object? overtimeSeconds = null,Object? startedAt = freezed,Object? lastCheckInAt = freezed,Object? awaitingCheckIn = null,}) {
   return _then(_TimerState(
 status: null == status ? _self.status : status // ignore: cast_nullable_to_non_nullable
 as TimerStatus,taskId: freezed == taskId ? _self.taskId : taskId // ignore: cast_nullable_to_non_nullable
@@ -278,8 +284,11 @@ as String?,trackerId: freezed == trackerId ? _self.trackerId : trackerId // igno
 as String?,energyScore: null == energyScore ? _self.energyScore : energyScore // ignore: cast_nullable_to_non_nullable
 as int,targetSeconds: null == targetSeconds ? _self.targetSeconds : targetSeconds // ignore: cast_nullable_to_non_nullable
 as int,elapsedSeconds: null == elapsedSeconds ? _self.elapsedSeconds : elapsedSeconds // ignore: cast_nullable_to_non_nullable
+as int,overtimeSeconds: null == overtimeSeconds ? _self.overtimeSeconds : overtimeSeconds // ignore: cast_nullable_to_non_nullable
 as int,startedAt: freezed == startedAt ? _self.startedAt : startedAt // ignore: cast_nullable_to_non_nullable
-as DateTime?,
+as DateTime?,lastCheckInAt: freezed == lastCheckInAt ? _self.lastCheckInAt : lastCheckInAt // ignore: cast_nullable_to_non_nullable
+as DateTime?,awaitingCheckIn: null == awaitingCheckIn ? _self.awaitingCheckIn : awaitingCheckIn // ignore: cast_nullable_to_non_nullable
+as bool,
   ));
 }
 
