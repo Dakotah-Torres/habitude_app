@@ -1,3 +1,4 @@
+import 'dart:math';
 import '../energy/task_completion.dart';
 
 /// Returns the Monday 00:00:00 UTC of the week containing the given date.
@@ -9,8 +10,7 @@ DateTime startOfISOWeek(DateTime date) {
 /// Returns the number of calendar weeks in the rolling window [windowStart, today]
 /// (inclusive, ISO Monday–Sunday UTC) where completions for taskId met or exceeded quota.
 ///
-/// Includes extra credit completions in the count (Ex: 5/3 completions = 1 met week + 2 extra = 3 hits).
-/// This allows ratios above 100% which trigger capacity unlocks.
+/// Binary hit per week: 1 if weekCompletions >= quota, else 0.
 int weeksHittingQuota(
   String taskId,
   int quota,
@@ -37,12 +37,44 @@ int weeksHittingQuota(
     }).length;
 
     if (weekCompletions >= quota) {
-      // 1 hit for meeting quota + extra credit completions
-      hits += 1 + (weekCompletions - quota);
+      hits += 1;
     }
   }
 
   return hits;
+}
+
+/// Returns the sum of max(0, weekCompletions - quota) across every week in the rolling window.
+/// This is the healing mechanism that allows ratios above 100%.
+int totalWindowExtraCredit(
+  String taskId,
+  int quota,
+  List<TaskCompletion> completions,
+  DateTime today, {
+  int windowWeeks = 6,
+}) {
+  if (quota <= 0) return 0;
+
+  final currentWeekStart = startOfISOWeek(today);
+  final windowStart =
+      currentWeekStart.subtract(Duration(days: (windowWeeks - 1) * 7));
+
+  int totalExtra = 0;
+  for (int i = 0; i < windowWeeks; i++) {
+    final weekStart = windowStart.add(Duration(days: i * 7));
+    final weekEnd = weekStart.add(const Duration(days: 7));
+
+    // Count completions for this week
+    final weekCompletions = completions.where((c) {
+      if (c.taskId != taskId) return false;
+      final completedAt = c.completedAt.toUtc();
+      return !completedAt.isBefore(weekStart) && completedAt.isBefore(weekEnd);
+    }).length;
+
+    totalExtra += max(0, weekCompletions - quota);
+  }
+
+  return totalExtra;
 }
 
 /// Returns the number of ISO weeks in the evaluation window (≤ windowWeeks; fewer
@@ -74,7 +106,7 @@ int evaluationWindowSize(
   return (differenceInDays / 7).floor() + 1;
 }
 
-/// Returns weeksHittingQuota / evaluationWindowSize as a percentage (0.0–∞).
+/// Returns (weeksHittingQuota + totalWindowExtraCredit) / evaluationWindowSize * 100.0.
 double consistencyRatio(
   String taskId,
   int quota,
@@ -97,5 +129,14 @@ double consistencyRatio(
     today,
     windowWeeks: windowWeeks,
   );
-  return (hits / windowSize) * 100.0;
+
+  final extra = totalWindowExtraCredit(
+    taskId,
+    quota,
+    completions,
+    today,
+    windowWeeks: windowWeeks,
+  );
+
+  return ((hits + extra) / windowSize) * 100.0;
 }
