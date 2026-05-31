@@ -12,6 +12,7 @@ class FakeTimerNotifier extends TimerNotifier {
   bool startCalled = false;
   bool stopCalled = false;
   bool checkInCalled = false;
+  bool shouldFailStart = false;
 
   @override
   TimerState build() {
@@ -25,6 +26,9 @@ class FakeTimerNotifier extends TimerNotifier {
     required int energyScore,
     int targetSeconds = 1500,
   }) async {
+    if (shouldFailStart) {
+      throw Exception('Failed to start');
+    }
     startCalled = true;
   }
 
@@ -157,6 +161,31 @@ void main() {
       
       await tester.tap(find.text('Stop timer'));
       expect(fakeNotifier.stopCalled, isTrue);
+    });
+
+    testWidgets('shows calm error panel when timer start fails', (tester) async {
+      final fakeNotifier = FakeTimerNotifier();
+      fakeNotifier.shouldFailStart = true;
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            timerNotifierProvider.overrideWith(() => fakeNotifier),
+          ],
+          child: MaterialApp(
+            theme: AppTheme.light,
+            home: TimerScreen(task: task),
+          ),
+        ),
+      );
+
+      await tester.pump(); // Handle post-frame _maybeStartTimer
+
+      expect(find.text('Timer did not start'), findsOneWidget);
+      expect(
+        find.text('Nothing was logged. Try again when you are ready.'),
+        findsOneWidget,
+      );
     });
   });
 }

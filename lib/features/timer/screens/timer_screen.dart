@@ -15,6 +15,8 @@ class TimerScreen extends ConsumerStatefulWidget {
 }
 
 class _TimerScreenState extends ConsumerState<TimerScreen> {
+  String? _errorMessage;
+
   @override
   void initState() {
     super.initState();
@@ -23,14 +25,22 @@ class _TimerScreenState extends ConsumerState<TimerScreen> {
     });
   }
 
-  void _maybeStartTimer() {
+  Future<void> _maybeStartTimer() async {
     final timerState = ref.read(timerNotifierProvider);
     if (timerState.status == TimerStatus.idle) {
-      ref.read(timerNotifierProvider.notifier).startTimer(
-            taskId: widget.task.id,
-            taskTitle: widget.task.title,
-            energyScore: widget.task.energyScore,
-          );
+      try {
+        await ref.read(timerNotifierProvider.notifier).startTimer(
+              taskId: widget.task.id,
+              taskTitle: widget.task.title,
+              energyScore: widget.task.energyScore,
+            );
+      } catch (e) {
+        if (mounted) {
+          setState(() {
+            _errorMessage = 'Timer did not start';
+          });
+        }
+      }
     } else if (timerState.taskId != widget.task.id) {
       showDialog(
         context: context,
@@ -69,6 +79,68 @@ class _TimerScreenState extends ConsumerState<TimerScreen> {
         }
       },
     );
+
+    if (_errorMessage != null) {
+      return Scaffold(
+        appBar: AppBar(
+          title: const Text('Focus'),
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back),
+            onPressed: () => Navigator.pop(context),
+          ),
+        ),
+        body: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 400),
+            child: Padding(
+              padding: const EdgeInsets.all(32.0),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    widget.task.title,
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                          color: AppColors.mesaSky,
+                        ),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 24),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(24),
+                    decoration: BoxDecoration(
+                      color: AppColors.surfaceLight,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: AppColors.juniper.withAlpha(25)),
+                    ),
+                    child: Column(
+                      children: [
+                        const Icon(Icons.info_outline, color: AppColors.juniper),
+                        const SizedBox(height: 16),
+                        Text(
+                          _errorMessage!,
+                          style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                                color: AppColors.juniper,
+                                fontWeight: FontWeight.bold,
+                              ),
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 8),
+                        const Text(
+                          'Nothing was logged. Try again when you are ready.',
+                          style: TextStyle(color: AppColors.juniper),
+                          textAlign: TextAlign.center,
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+    }
 
     final isOvertime = timerState.status == TimerStatus.overtime;
     final displayTime = isOvertime
