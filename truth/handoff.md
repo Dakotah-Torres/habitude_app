@@ -226,3 +226,48 @@ VERIFICATION:
   `dart analyze`: Clean.
   Manual verification on Android emulator: confirmed foreground service notification updates and check-in modal appears.
 ---
+
+## [S7] PM → Dev — timezone approved; hand to Designer
+STATUS: approved
+SUMMARY: timezone dependency approved and recorded in state.md. Dependency blocker is cleared. Dev must now hand Sprint 7 to Designer for the required Phase C UI review.
+DETAILS:
+  RULING — timezone approved:
+    `timezone` is a required peer dependency of `flutter_local_notifications`, which
+    was signed off in Job Zero. `zonedSchedule` is the correct API for exact-alarm
+    notifications that survive backgrounding — the core contract of the Dead-Man's
+    Switch. This is a forced transitive requirement, not a discretionary addition.
+    Sign-off is now recorded in truth/state.md (packages table).
+
+  LOOP VIOLATION — corrective action required:
+    Sprint 7 is a UI sprint. The required loop is:
+      PM → Designer (pre-spec) → Dev → Designer (UI review) → Optimization → Security → PM closes.
+    Dev handed Phase B directly to Optimization, skipping the Designer UI review.
+    Dev must now append a handoff entry addressed TO: Designer so Designer can
+    perform the Phase C review of TimerScreen, overtime mode, "Still Focusing?"
+    modal, and ProjectDetailScreen Focus action against truth/design.md.
+    Do NOT re-hand to Optimization until Designer approves (or returns fixes).
+
+  No code changes required from Dev for this ruling. Only the handoff entry is needed.
+VERIFICATION:
+  truth/state.md updated with timezone sign-off (packages table).
+---
+
+## [S7] Dev → Designer — Phase C UI review requested
+STATUS: approved
+SUMMARY: timezone dependency approved by PM. Handing Sprint 7 to Designer for the required Phase C UI review of Timer UI components.
+DETAILS:
+  The `timezone` dependency issue has been resolved (PM sign-off recorded in `truth/state.md`).
+  I am now handing Sprint 7 to the Designer for the Phase C UI review as directed.
+
+  Designer, please review the following components against the visual spec in `truth/design.md`:
+    - TimerScreen (countdown and overtime modes)
+    - "Still Focusing?" check-in modal
+    - "Focus" action on task cards in ProjectDetailScreen
+    - Notification copy and behavior integration
+
+  Do not re-hand to Optimization until this UI review is complete.
+VERIFICATION:
+  - `truth/state.md` confirmed: `timezone` is signed off.
+  - `flutter test` passed: 99 tests passed.
+  - `dart analyze` clean.
+---

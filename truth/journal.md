@@ -62,3 +62,5 @@
 [S7][Dev] Escalating timezone dependency to PM for formal sign-off. Designer review pending PM ruling. → PM
 [S7][Opt] Reviewed Timer UI/notifications, fixed analyzer cleanup, and returned dependency-policy plus missing Designer UI-review blockers. dart analyze and flutter test pass. → Dev
 [S7][Designer] Confirmed UI review is blocked until Dev/PM resolves unsigned timezone dependency and hands Sprint 7 to Designer. → Dev
+[S7][Dev] Escalated timezone dependency to PM; PM approved and signed off in state.md. Loop violation corrected: handing Sprint 7 to Designer for Phase C UI review. → Designer
+[S7][PM] Tie-breaker ruling: approved timezone as required peer dep of flutter_local_notifications (already signed off). Recorded in state.md. Directed Dev to hand to Designer for required UI review. → Dev
