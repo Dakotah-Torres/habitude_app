@@ -5,6 +5,7 @@ import 'package:habitude/features/energy/task_completion_repository.dart';
 import 'package:habitude/features/goals/task.dart';
 import 'package:habitude/features/triage/brain_dump_item.dart';
 import 'package:habitude/features/triage/brain_dump_repository.dart';
+import 'package:habitude/features/triage/triage_providers.dart';
 import 'package:habitude/features/triage/triage_service.dart';
 import 'package:habitude/shared/theme.dart';
 import 'package:habitude/shared/utils.dart';
@@ -52,7 +53,11 @@ class _TriageFunnelScreenState extends ConsumerState<TriageFunnelScreen> {
       brainDump: (brainDump) {
         final tomorrow = DateTime.now().toUtc().add(const Duration(days: 1));
         final updated = brainDump.copyWith(
-          backloggedUntil: DateTime.utc(tomorrow.year, tomorrow.month, tomorrow.day),
+          backloggedUntil: DateTime.utc(
+            tomorrow.year,
+            tomorrow.month,
+            tomorrow.day,
+          ),
         );
         ref.read(brainDumpRepositoryProvider).updateItem(updated);
       },
@@ -86,9 +91,7 @@ class _TriageFunnelScreenState extends ConsumerState<TriageFunnelScreen> {
     final currentItem = queue[_currentIndex];
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Triage'),
-      ),
+      appBar: AppBar(title: const Text('Triage')),
       body: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 720),
@@ -228,8 +231,11 @@ class _TriageCard extends StatelessWidget {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Icon(Icons.calendar_today_outlined,
-                      color: AppColors.mesaSky, size: 20),
+                  const Icon(
+                    Icons.calendar_today_outlined,
+                    color: AppColors.mesaSky,
+                    size: 20,
+                  ),
                   const SizedBox(height: 4),
                   RotatedBox(
                     quarterTurns: 3,
@@ -255,8 +261,11 @@ class _TriageCard extends StatelessWidget {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Icon(Icons.keyboard_arrow_down,
-                      color: AppColors.juniper, size: 20),
+                  const Icon(
+                    Icons.keyboard_arrow_down,
+                    color: AppColors.juniper,
+                    size: 20,
+                  ),
                   Text(
                     'REMOVE',
                     style: TextStyle(
@@ -290,9 +299,9 @@ class _BrainDumpContent extends StatelessWidget {
         Expanded(
           child: Text(
             item.text,
-            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                  color: AppColors.juniper,
-                ),
+            style: Theme.of(
+              context,
+            ).textTheme.headlineSmall?.copyWith(color: AppColors.juniper),
           ),
         ),
         const SizedBox(height: 16),
@@ -326,9 +335,9 @@ class _TaskContent extends StatelessWidget {
           child: Text(
             task.title,
             style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                  color: AppColors.juniper,
-                  fontWeight: FontWeight.bold,
-                ),
+              color: AppColors.juniper,
+              fontWeight: FontWeight.bold,
+            ),
           ),
         ),
         const SizedBox(height: 16),
@@ -341,9 +350,9 @@ class _TaskContent extends StatelessWidget {
         ),
         const SizedBox(height: 8),
         Text(
-          completions == 0 
-            ? 'Not started this week'
-            : '$completions of ${task.weeklyQuota} this week',
+          completions == 0
+              ? 'Not started this week'
+              : '$completions of ${task.weeklyQuota} this week',
           style: const TextStyle(color: AppColors.mesaSky),
         ),
         const SizedBox(height: 16),
@@ -411,7 +420,11 @@ class _TriageButton extends StatelessWidget {
         const SizedBox(height: 4),
         Text(
           label,
-          style: TextStyle(fontSize: 10, color: color, fontWeight: FontWeight.bold),
+          style: TextStyle(
+            fontSize: 10,
+            color: color,
+            fontWeight: FontWeight.bold,
+          ),
         ),
       ],
     );
@@ -430,14 +443,18 @@ class _CompletionState extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(Icons.check_circle_outline, size: 64, color: AppColors.saguaro),
+              const Icon(
+                Icons.check_circle_outline,
+                size: 64,
+                color: AppColors.saguaro,
+              ),
               const SizedBox(height: 24),
               Text(
                 'All caught up!',
                 style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                      color: AppColors.juniper,
-                      fontWeight: FontWeight.bold,
-                    ),
+                  color: AppColors.juniper,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
               const SizedBox(height: 8),
               const Text(

@@ -1,19 +1,15 @@
 import 'package:freezed_annotation/freezed_annotation.dart';
-import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:habitude/features/energy/task_completion.dart';
-import 'package:habitude/features/energy/task_completion_repository.dart';
 import 'package:habitude/features/goals/task.dart';
-import 'package:habitude/features/goals/tasks_repository.dart';
 import 'package:habitude/features/triage/brain_dump_item.dart';
-import 'package:habitude/features/triage/brain_dump_repository.dart';
 
 part 'triage_service.freezed.dart';
-part 'triage_service.g.dart';
 
 @freezed
 abstract class TriageItem with _$TriageItem {
   const factory TriageItem.brainDump(BrainDumpItem item) = _TriageBrainDump;
-  const factory TriageItem.task(Task task, int completionsThisWeek) = _TriageTask;
+  const factory TriageItem.task(Task task, int completionsThisWeek) =
+      _TriageTask;
 }
 
 class TriageService {
@@ -69,57 +65,14 @@ class TriageService {
       utcToday.month,
       utcToday.day,
     ).subtract(Duration(days: utcToday.weekday - 1));
-    
+
     final endOfWeek = startOfWeek.add(const Duration(days: 7));
 
     return completions.where((c) {
       if (c.taskId != taskId) return false;
       final completedAt = c.completedAt.toUtc();
-      return !completedAt.isBefore(startOfWeek) && completedAt.isBefore(endOfWeek);
+      return !completedAt.isBefore(startOfWeek) &&
+          completedAt.isBefore(endOfWeek);
     }).length;
   }
-}
-
-@riverpod
-TriageService triageService(Ref ref) {
-  return TriageService();
-}
-
-@riverpod
-int triagePendingCount(Ref ref) {
-  final activeItems = ref.watch(brainDumpActiveItemsProvider).value ?? [];
-  final tasks = ref.watch(tasksStreamProvider).value ?? [];
-  final completions = ref.watch(taskCompletionsStreamProvider).value ?? [];
-  final service = ref.watch(triageServiceProvider);
-
-  final today = DateTime.now().toUtc();
-  
-  final pendingItems = service.todaysBrainDumpItems(activeItems, today);
-  final pendingTasks = service.pendingRecurringTasks(tasks, completions, today);
-
-  return pendingItems.length + pendingTasks.length;
-}
-
-@riverpod
-List<TriageItem> triageQueue(Ref ref) {
-  final activeItems = ref.watch(brainDumpActiveItemsProvider).value ?? [];
-  final tasks = ref.watch(tasksStreamProvider).value ?? [];
-  final completions = ref.watch(taskCompletionsStreamProvider).value ?? [];
-  final service = ref.watch(triageServiceProvider);
-
-  final today = DateTime.now().toUtc();
-
-  final pendingItems = service.todaysBrainDumpItems(activeItems, today);
-  final pendingTasks = service.pendingRecurringTasks(tasks, completions, today);
-
-  final queue = <TriageItem>[];
-  for (final item in pendingItems) {
-    queue.add(TriageItem.brainDump(item));
-  }
-  for (final task in pendingTasks) {
-    final count = service.completionsThisWeek(task.id, completions, today);
-    queue.add(TriageItem.task(task, count));
-  }
-
-  return queue;
 }

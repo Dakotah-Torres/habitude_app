@@ -32,7 +32,7 @@ class BrainDumpRepository {
       return items.where((item) {
         if (item.scheduledForDate != null) return false;
         if (item.backloggedUntil == null) return true;
-        
+
         final backlogDate = DateTime.utc(
           item.backloggedUntil!.year,
           item.backloggedUntil!.month,

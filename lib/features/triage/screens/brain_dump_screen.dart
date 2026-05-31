@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:habitude/features/triage/brain_dump_item.dart';
 import 'package:habitude/features/triage/brain_dump_repository.dart';
 import 'package:habitude/features/triage/screens/triage_funnel_screen.dart';
-import 'package:habitude/features/triage/triage_service.dart';
+import 'package:habitude/features/triage/triage_providers.dart';
 import 'package:habitude/shared/theme.dart';
 import 'package:habitude/shared/utils.dart';
 
@@ -46,9 +46,7 @@ class _BrainDumpScreenState extends ConsumerState<BrainDumpScreen> {
     final triageCount = ref.watch(triagePendingCountProvider);
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Brain Dump'),
-      ),
+      appBar: AppBar(title: const Text('Brain Dump')),
       body: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 720),
@@ -122,7 +120,8 @@ class _BrainDumpScreenState extends ConsumerState<BrainDumpScreen> {
                           ),
                           const SizedBox(height: 16),
                           ElevatedButton(
-                            onPressed: () => ref.refresh(brainDumpStreamProvider),
+                            onPressed: () =>
+                                ref.refresh(brainDumpStreamProvider),
                             child: const Text('Retry'),
                           ),
                         ],
@@ -205,11 +204,7 @@ class _BrainDumpListTile extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return ListTile(
-      title: Text(
-        item.text,
-        maxLines: 3,
-        overflow: TextOverflow.ellipsis,
-      ),
+      title: Text(item.text, maxLines: 3, overflow: TextOverflow.ellipsis),
       subtitle: Text(
         formatRelativeTime(item.createdAt),
         style: const TextStyle(fontSize: 12, color: AppColors.mesaSky),

@@ -74,3 +74,9 @@
 [S8][Designer] Added Brain Dump + Triage visual spec for inbox, triage funnel, and bottom navigation entry point to truth/design.md. → Dev
 [S8][Dev] Implemented Brain Dump + Triage workflow: models, repositories, pure logic service, and UI with root bottom navigation. All tests pass (130 total). → Designer
 [S8][Designer] Reviewed Brain Dump + Triage UI; returned fixes for analyzer failure and missing triage card swipe direction indicators. flutter test passes. → Dev
+[S8][Dev] Fixed analyzer errors in main.dart and triage screens. Added resting swipe direction indicators to TriageFunnelScreen. Cleaned up deprecated withOpacity. All tests pass (130 total). → Designer
+[S8][Designer] Re-reviewed Brain Dump + Triage fixes and approved UI fidelity. dart analyze and flutter test pass. → Optimization
+[S8][Opt] Reviewed Brain Dump + Triage, split Riverpod providers out of pure triage service, regenerated code, and approved. dart analyze and flutter test pass; flutter analyze still blocked by local tool crash. → Security
+[S8][Security] Reviewed Sprint 8 Brain Dump + Triage. No HIGH/MEDIUM findings. Firestore rules cover brain_dump_items via recursive wildcard. Two new LOW items added (uncapped text length; primaryVelocity! force-unwrap). Clean approval. → PM
+[S8][PM] Sprint 8 closed. 130 tests pass, dart analyze clean, full UI loop complete (2 Designer rounds), Security clean. Two new LOW items added. state.md updated. Sprint 9 scoped (Gamification Engine: ConsistencyEngine, GamificationEngine, RankUpEvent, GamificationRepository, GamificationService). Awaiting human approval. → Human
+[S9][Designer] Confirmed Sprint 9 is non-UI and no handoff is addressed to Designer; no design spec/review needed. → Dev

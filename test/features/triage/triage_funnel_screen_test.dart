@@ -6,6 +6,7 @@ import 'package:habitude/features/goals/task.dart';
 import 'package:habitude/features/triage/brain_dump_item.dart';
 import 'package:habitude/features/triage/brain_dump_repository.dart';
 import 'package:habitude/features/triage/screens/triage_funnel_screen.dart';
+import 'package:habitude/features/triage/triage_providers.dart';
 import 'package:habitude/features/triage/triage_service.dart';
 import 'package:habitude/shared/auth_repository.dart';
 import 'package:habitude/shared/theme.dart';
@@ -13,7 +14,7 @@ import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 
 class FakeBrainDumpRepository extends BrainDumpRepository {
   FakeBrainDumpRepository() : super(FakeFirebaseFirestore(), uid: 'test');
-  
+
   BrainDumpItem? updatedItem;
   String? deletedId;
 
@@ -30,7 +31,7 @@ class FakeBrainDumpRepository extends BrainDumpRepository {
 
 class FakeTaskCompletionRepository extends TaskCompletionRepository {
   FakeTaskCompletionRepository() : super(FakeFirebaseFirestore(), uid: 'test');
-  
+
   bool addCompletionCalled = false;
 
   @override
@@ -58,7 +59,9 @@ void main() {
       createdAt: DateTime.now().toUtc(),
     );
 
-    testWidgets('renders cards sequentially and shows completion state', (tester) async {
+    testWidgets('renders cards sequentially and shows completion state', (
+      tester,
+    ) async {
       final fakeRepo = FakeBrainDumpRepository();
       final fakeCompletionRepo = FakeTaskCompletionRepository();
       final queue = [
@@ -71,7 +74,9 @@ void main() {
           overrides: [
             currentUserIdProvider.overrideWithValue('test'),
             brainDumpRepositoryProvider.overrideWithValue(fakeRepo),
-            taskCompletionRepositoryProvider.overrideWithValue(fakeCompletionRepo),
+            taskCompletionRepositoryProvider.overrideWithValue(
+              fakeCompletionRepo,
+            ),
             triageQueueProvider.overrideWithValue(queue),
           ],
           child: MaterialApp(
@@ -84,7 +89,7 @@ void main() {
       // Card 1
       expect(find.text('Thought 1'), findsOneWidget);
       expect(find.text('Card 1 of 2'), findsOneWidget);
-      
+
       await tester.tap(find.byKey(const Key('triage_do_today')));
       await tester.pumpAndSettle();
 
@@ -99,31 +104,36 @@ void main() {
       expect(find.text('All caught up!'), findsOneWidget);
     });
 
-    testWidgets('Do Today on BrainDumpItem updates item with scheduledForDate', (tester) async {
-      final fakeRepo = FakeBrainDumpRepository();
-      final queue = [TriageItem.brainDump(brainDumpItem)];
+    testWidgets(
+      'Do Today on BrainDumpItem updates item with scheduledForDate',
+      (tester) async {
+        final fakeRepo = FakeBrainDumpRepository();
+        final queue = [TriageItem.brainDump(brainDumpItem)];
 
-      await tester.pumpWidget(
-        ProviderScope(
-          overrides: [
-            currentUserIdProvider.overrideWithValue('test'),
-            brainDumpRepositoryProvider.overrideWithValue(fakeRepo),
-            triageQueueProvider.overrideWithValue(queue),
-          ],
-          child: MaterialApp(
-            theme: AppTheme.light,
-            home: const TriageFunnelScreen(),
+        await tester.pumpWidget(
+          ProviderScope(
+            overrides: [
+              currentUserIdProvider.overrideWithValue('test'),
+              brainDumpRepositoryProvider.overrideWithValue(fakeRepo),
+              triageQueueProvider.overrideWithValue(queue),
+            ],
+            child: MaterialApp(
+              theme: AppTheme.light,
+              home: const TriageFunnelScreen(),
+            ),
           ),
-        ),
-      );
+        );
 
-      await tester.tap(find.byKey(const Key('triage_do_today')));
-      await tester.pumpAndSettle();
+        await tester.tap(find.byKey(const Key('triage_do_today')));
+        await tester.pumpAndSettle();
 
-      expect(fakeRepo.updatedItem?.scheduledForDate, isNotNull);
-    });
+        expect(fakeRepo.updatedItem?.scheduledForDate, isNotNull);
+      },
+    );
 
-    testWidgets('Tomorrow on BrainDumpItem updates item with backloggedUntil', (tester) async {
+    testWidgets('Tomorrow on BrainDumpItem updates item with backloggedUntil', (
+      tester,
+    ) async {
       final fakeRepo = FakeBrainDumpRepository();
       final queue = [TriageItem.brainDump(brainDumpItem)];
 
@@ -181,7 +191,9 @@ void main() {
           overrides: [
             currentUserIdProvider.overrideWithValue('test'),
             brainDumpRepositoryProvider.overrideWithValue(fakeRepo),
-            taskCompletionRepositoryProvider.overrideWithValue(fakeCompletionRepo),
+            taskCompletionRepositoryProvider.overrideWithValue(
+              fakeCompletionRepo,
+            ),
             triageQueueProvider.overrideWithValue(queue),
           ],
           child: MaterialApp(
@@ -196,7 +208,7 @@ void main() {
 
       expect(fakeCompletionRepo.addCompletionCalled, isTrue);
     });
-   group('Triage gestures', () {
+    group('Triage gestures', () {
       testWidgets('swipe right calls Do Today', (tester) async {
         final fakeRepo = FakeBrainDumpRepository();
         final queue = [TriageItem.brainDump(brainDumpItem)];

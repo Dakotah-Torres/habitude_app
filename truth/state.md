@@ -6,9 +6,9 @@
 
 ## Current sprint
 
-**Sprint 8** — Brain Dump + Morning Triage Funnel.
-UI sprint — Designer pre-specs before Dev builds.
-See `truth/sprint.md`. Status: **approved 2026-05-31 — Designer active (pre-spec).**
+**Sprint 9** — Gamification Engine.
+Non-UI sprint — Dev builds directly after PM.
+See `truth/sprint.md`. Status: **awaiting human approval.**
 
 ## Locked decisions
 
@@ -118,6 +118,11 @@ Tracker model/repo, TimerState + TimerStatus enum, TimerNotifier (startTimer/pau
 resumeTimer/stopTimer/reconcile), shared_preferences persistence, pure helpers
 computeElapsed/isComplete. 93 tests pass.
 
+### Sprint 8 — Brain Dump + Morning Triage Funnel (closed 2026-05-31)
+BrainDumpItem model/repo, TriageService (pure Dart, ISO-week logic), triage_providers.dart,
+BrainDumpScreen, TriageFunnelScreen (swipe + explicit buttons, resting directional hints),
+root NavigationBar (Goals + Dump tabs). 130 tests pass.
+
 ### Sprint 7 — Timer UI + Overtime + Dead-Man's Switch (closed 2026-05-31)
 
 All four tasks delivered. Full UI sprint loop ran (including Designer pre-spec,
@@ -167,6 +172,14 @@ two rounds of Designer UI review, Optimization, Security). 100 tests pass.
 - **[LOW — pre-deployment]** `confirmedDuration` can be negative on clock skew.
   `lastRef.difference(state.startedAt!).inSeconds` — clamp to `max(0, ...)`.
   File: `lib/features/timer/timer_notifier.dart:346`.
+- **[LOW — pre-deployment]** Brain dump text has no client-side max-length cap.
+  `BrainDumpScreen._addItem()` trims and rejects empty input but places no upper bound.
+  Cap at 1000 characters before the Firestore write.
+  File: `lib/features/triage/screens/brain_dump_screen.dart`.
+- **[LOW — pre-deployment]** `primaryVelocity!` force-unwrap in `_TriageCard` swipe handlers.
+  `details.primaryVelocity!` on `onHorizontalDragEnd` and `onVerticalDragEnd` — replace
+  with `details.primaryVelocity ?? 0.0`.
+  File: `lib/features/triage/screens/triage_funnel_screen.dart:173,175,180`.
 
 ## Tie-breaker rulings
 

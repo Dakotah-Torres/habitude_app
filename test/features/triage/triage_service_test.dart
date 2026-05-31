@@ -18,19 +18,34 @@ void main() {
       });
 
       test('excludes scheduled items', () {
-        final item = BrainDumpItem(id: '2', text: 'T2', createdAt: now, scheduledForDate: today);
+        final item = BrainDumpItem(
+          id: '2',
+          text: 'T2',
+          createdAt: now,
+          scheduledForDate: today,
+        );
         expect(service.todaysBrainDumpItems([item], today), isEmpty);
       });
 
       test('excludes items backlogged until tomorrow', () {
         final tomorrow = today.add(const Duration(days: 1));
-        final item = BrainDumpItem(id: '3', text: 'T3', createdAt: now, backloggedUntil: tomorrow);
+        final item = BrainDumpItem(
+          id: '3',
+          text: 'T3',
+          createdAt: now,
+          backloggedUntil: tomorrow,
+        );
         expect(service.todaysBrainDumpItems([item], today), isEmpty);
       });
 
       test('includes items backlogged until yesterday', () {
         final yesterday = today.subtract(const Duration(days: 1));
-        final item = BrainDumpItem(id: '4', text: 'T4', createdAt: now, backloggedUntil: yesterday);
+        final item = BrainDumpItem(
+          id: '4',
+          text: 'T4',
+          createdAt: now,
+          backloggedUntil: yesterday,
+        );
         expect(service.todaysBrainDumpItems([item], today), contains(item));
       });
     });
@@ -43,9 +58,24 @@ void main() {
 
       test('counts completions on Monday and Sunday of same week', () {
         final completions = [
-          TaskCompletion(id: '1', taskId: 't1', energyScore: 1, completedAt: monday),
-          TaskCompletion(id: '2', taskId: 't1', energyScore: 1, completedAt: sunday),
-          TaskCompletion(id: '3', taskId: 't1', energyScore: 1, completedAt: prevSunday),
+          TaskCompletion(
+            id: '1',
+            taskId: 't1',
+            energyScore: 1,
+            completedAt: monday,
+          ),
+          TaskCompletion(
+            id: '2',
+            taskId: 't1',
+            energyScore: 1,
+            completedAt: sunday,
+          ),
+          TaskCompletion(
+            id: '3',
+            taskId: 't1',
+            energyScore: 1,
+            completedAt: prevSunday,
+          ),
         ];
 
         expect(service.completionsThisWeek('t1', completions, monday), 2);
@@ -54,7 +84,12 @@ void main() {
 
       test('today=Monday: previous Sunday is not in same week', () {
         final completions = [
-          TaskCompletion(id: '3', taskId: 't1', energyScore: 1, completedAt: prevSunday),
+          TaskCompletion(
+            id: '3',
+            taskId: 't1',
+            energyScore: 1,
+            completedAt: prevSunday,
+          ),
         ];
         expect(service.completionsThisWeek('t1', completions, monday), 0);
       });
@@ -84,22 +119,51 @@ void main() {
 
       test('includes recurring task with quota not met', () {
         final completions = [
-          TaskCompletion(id: '1', taskId: 'rt1', energyScore: 1, completedAt: today),
+          TaskCompletion(
+            id: '1',
+            taskId: 'rt1',
+            energyScore: 1,
+            completedAt: today,
+          ),
         ];
-        expect(service.pendingRecurringTasks([recurringTask], completions, today), contains(recurringTask));
+        expect(
+          service.pendingRecurringTasks([recurringTask], completions, today),
+          contains(recurringTask),
+        );
       });
 
       test('excludes recurring task with quota met', () {
         final completions = [
-          TaskCompletion(id: '1', taskId: 'rt1', energyScore: 1, completedAt: today),
-          TaskCompletion(id: '2', taskId: 'rt1', energyScore: 1, completedAt: today.add(const Duration(days: 1))),
-          TaskCompletion(id: '3', taskId: 'rt1', energyScore: 1, completedAt: today.add(const Duration(days: 2))),
+          TaskCompletion(
+            id: '1',
+            taskId: 'rt1',
+            energyScore: 1,
+            completedAt: today,
+          ),
+          TaskCompletion(
+            id: '2',
+            taskId: 'rt1',
+            energyScore: 1,
+            completedAt: today.add(const Duration(days: 1)),
+          ),
+          TaskCompletion(
+            id: '3',
+            taskId: 'rt1',
+            energyScore: 1,
+            completedAt: today.add(const Duration(days: 2)),
+          ),
         ];
-        expect(service.pendingRecurringTasks([recurringTask], completions, today), isEmpty);
+        expect(
+          service.pendingRecurringTasks([recurringTask], completions, today),
+          isEmpty,
+        );
       });
 
       test('excludes one-time tasks', () {
-        expect(service.pendingRecurringTasks([oneTimeTask], [], today), isEmpty);
+        expect(
+          service.pendingRecurringTasks([oneTimeTask], [], today),
+          isEmpty,
+        );
       });
     });
   });

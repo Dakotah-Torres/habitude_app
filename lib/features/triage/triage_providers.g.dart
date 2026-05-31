@@ -1,6 +1,6 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 
-part of 'triage_service.dart';
+part of 'triage_providers.dart';
 
 // **************************************************************************
 // RiverpodGenerator
@@ -136,4 +136,4 @@ final class TriageQueueProvider
   }
 }
 
-String _$triageQueueHash() => r'acbd877a752f2b7453a92ef87793dca2abc165a0';
+String _$triageQueueHash() => r'cd3c845b3906866eab4936c4250733cf37f9ae90';
