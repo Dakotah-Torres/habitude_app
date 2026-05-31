@@ -1,266 +1,307 @@
-# Sprint 9 — Gamification Engine
+# Sprint 10 — Local-First Storage Layer
 
 > **Status: AWAITING HUMAN APPROVAL**
 > PM wrote this. Dev does not begin until the human operator approves.
 
-**Goal:** Build the pure-Dart computation layer for the gamification system. When
-this sprint is done, the app can calculate rolling consistency ratios per recurring
-task, detect Extra Credit completions, trigger Capacity Unlocks (permanent baseline
-bumps) when a task's consistency ratio reaches 120%, persist rank-up events, and
-expose the current global rank (Novice → Adept → Master) and baseline through
-Riverpod providers.
+**Goal:** Make the app fully usable without any account. When this sprint is done,
+first-time users see a Welcome screen with two paths — "Continue without account"
+(local SQLite storage via drift) or "Sign in / Create account" (existing Firestore
++ anonymous auth). All data operations transparently use whichever backend was
+chosen. A migration service copies local data to Firestore when a local user later
+opts into cloud. No existing feature behavior changes for cloud-mode users.
 
 **Scope:**
-- `lib/features/gamification/consistency_engine.dart` (new pure Dart engine)
-- `lib/features/gamification/gamification_engine.dart` (new pure Dart engine)
-- `lib/features/gamification/rank_up_event.dart` (new model)
-- `lib/features/gamification/gamification_repository.dart` (new repository)
-- `lib/features/gamification/gamification_service.dart` (new Riverpod service + providers)
-- `lib/shared/firestore_paths.dart` (add `rankUpEvents` path)
+- `lib/shared/storage_mode.dart` (new — StorageMode enum + provider)
+- `lib/shared/local/app_database.dart` (new — drift database with all tables)
+- `lib/shared/local/app_database.g.dart` (generated)
+- `lib/shared/migration_service.dart` (new — local → cloud migration)
+- `lib/shared/screens/welcome_screen.dart` (new — first-launch onboarding)
+- `lib/features/goals/goals_repository_local.dart` (new)
+- `lib/features/goals/projects_repository_local.dart` (new)
+- `lib/features/goals/tasks_repository_local.dart` (new)
+- `lib/features/goals/contexts_repository_local.dart` (new)
+- `lib/features/energy/task_completion_repository_local.dart` (new)
+- `lib/features/timer/tracker_repository_local.dart` (new)
+- `lib/features/triage/brain_dump_repository_local.dart` (new)
+- `lib/features/gamification/gamification_repository_local.dart` (new)
+- Each existing Firestore repository (add `implements I<Name>Repository`)
+- Each existing repository provider (switch implementation on StorageMode)
+- `lib/main.dart` (wire Welcome screen, skip Firebase init in local mode)
+- `truth/design.md` (Designer appends Sprint 10 spec for the Welcome screen)
 
-**Sprint type: Non-UI.**
-Loop: PM → Dev → Optimization → Security → PM closes.
+**Sprint type: UI** (Welcome screen requires Designer pre-spec and UI review).
+Loop: PM → Designer (pre-spec) → Dev → Designer (UI review) → Optimization → Security → PM closes.
 
-**No new packages.** All dependencies already in `pubspec.yaml`.
+**New packages (pre-approved in state.md):**
+- `drift: ^2.x` + `drift_flutter: ^0.1.x`
+- `sqlite3_flutter_libs: ^0.5.x`
+
+---
+
+## Phase A — Designer pre-spec
+
+**Addressee: Designer**
+
+Append a "Sprint 10 visual spec — Welcome Screen" section to `truth/design.md`.
+
+### Surface to spec: `WelcomeScreen`
+
+This is the only UI surface in Sprint 10. It is shown **once** on first launch.
+
+**What the spec must include:**
+
+- **Layout:** How the two options are presented. This is the user's very first
+  impression of the app — it must feel calm, trustworthy, and low-pressure.
+  Align with the Sedona Sunset palette and "calm by default" design thesis.
+- **Option 1 — "Continue without account":** The default, easy, no-commitment
+  path. Should feel like the natural choice for someone not ready to sign in.
+  Copy must not shame or pressure the user. (No "Limited mode" or "Offline only"
+  language.)
+- **Option 2 — "Sign in / Create account":** The cloud-sync path. In Sprint 10
+  this uses anonymous auth as a placeholder; real Google/Apple sign-in arrives
+  Sprint 15. The button should acknowledge that sign-in unlocks sync, not that
+  local-only is inferior.
+- **Branding / hero element:** The screen needs an identity — app name, a brief
+  one-line tagline that captures the core philosophy ("manage energy, not time"),
+  and optionally a subtle hero graphic (described in words, not rendered).
+- **No account yet / privacy note:** A short line reassuring the user that local
+  data stays on their device and no account is ever required.
+- **Transition:** What happens visually after the user taps either option (e.g.,
+  fade to main app). Keep it lightweight — no onboarding carousel.
+
+**Design constraints:**
+- Sedona Sunset palette, Material 3 base.
+- Core philosophy: the choice must feel safe and shame-free. Neither option
+  should feel like a downgrade.
+- No more than two primary tap targets on this screen.
+- The screen should never be shown again once a choice is made.
 
 ---
 
 ## Phase B — Dev build
 
-**Addressee: Dev**
+**Addressee: Dev** (after Designer hands off)
 
 ---
 
-### Task 1 — ConsistencyEngine (pure Dart)
+### Task 1 — StorageMode
 
-**File:** `lib/features/gamification/consistency_engine.dart`
-
-Pure Dart file — no Flutter, Riverpod, or Firestore imports.
-
-**Core concept:** A rolling consistency ratio measures how reliably a user hits a
-recurring task's weekly quota over the past N weeks (default: 6 weeks). It is a
-fraction `completionsHit / weeksEvaluated` expressed as a percentage, where
-`completionsHit` = the number of weeks in the window where
-`completionsThisWeek >= task.weeklyQuota`. This replaces streak-based scoring —
-missing a week lowers the ratio but does not reset to zero.
-
-**Functions:**
+**File:** `lib/shared/storage_mode.dart`
 
 ```dart
-// Returns the number of calendar weeks in the rolling window [windowStart, today]
-// (inclusive, ISO Monday–Sunday UTC) where completions for taskId met or exceeded quota.
-// windowStart defaults to the Monday 6 ISO weeks before the week containing today.
-int weeksHittingQuota(
-  String taskId,
-  int quota,
-  List<TaskCompletion> completions,
-  DateTime today, {
-  int windowWeeks = 6,
-});
-
-// Returns the number of ISO weeks in the evaluation window (≤ windowWeeks; fewer
-// at the start of the user's history when there are not yet windowWeeks of data).
-int evaluationWindowSize(
-  String taskId,
-  List<TaskCompletion> completions,
-  DateTime today, {
-  int windowWeeks = 6,
-});
-
-// Returns weeksHittingQuota / evaluationWindowSize as a percentage (0.0–∞).
-// Returns 0.0 if evaluationWindowSize is 0.
-// Values above 100.0 are possible via Extra Credit weeks (see Task 2).
-double consistencyRatio(
-  String taskId,
-  int quota,
-  List<TaskCompletion> completions,
-  DateTime today, {
-  int windowWeeks = 6,
-});
+enum StorageMode { local, cloud }
 ```
 
-**ISO week definition:** Monday 00:00:00 UTC through Sunday 23:59:59 UTC.
-
-**Evaluation window:** The 6 ISO weeks ending with the week that contains `today`
-(i.e., the current week is included in the window, even if it is not yet complete).
-
-**Extra Credit week:** A week where `completionsThisWeek > quota` still counts as
-1 hit in `weeksHittingQuota` (capped at 1 per week for ratio purposes — Extra
-Credit's effect is in Task 2, not here).
-
-**Acceptance criteria** (pure Dart unit tests):
-- Task with quota 3, 6/6 weeks all meeting quota → ratio = 100.0%.
-- Task with quota 3, 5/6 weeks meeting quota → ratio ≈ 83.3%.
-- Task with quota 3, 0/6 weeks meeting quota → ratio = 0.0%.
-- Task with no completions at all → ratio = 0.0, windowSize = 0.
-- Task in its first week (only 1 week of history) → windowSize = 1.
-- A week with 5 completions against quota 3 counts as 1 hit, not 5/3.
-- completions from outside the window do NOT affect the ratio.
-- Edge: today is Monday — the previous Sunday is in the prior week.
-
----
-
-### Task 2 — GamificationEngine (pure Dart)
-
-**File:** `lib/features/gamification/gamification_engine.dart`
-
-Pure Dart file — no Flutter, Riverpod, or Firestore imports.
-
-**Core concepts:**
-
-- **Extra Credit:** A completion beyond the weekly quota for a recurring task.
-  Extra Credit completions "heal" past consistency by counting in future ratio
-  windows. The engine exposes how many Extra Credit completions exist for the
-  current week.
-- **Capacity Unlock:** Triggered when a task's `consistencyRatio` reaches or
-  exceeds 120.0%. Each unlock permanently increases the user's Daily Energy
-  Baseline by 5 points. An unlock fires **once per task** when it first crosses
-  the 120% threshold; it does not fire again unless the ratio dips below 100%
-  and climbs back to 120%.
-- **Global Rank:** Computed from the total number of Capacity Unlocks the user
-  has ever received. Novice (0 unlocks), Adept (1–4 unlocks), Master (5+ unlocks).
-
-```dart
-enum Rank { novice, adept, master }
-
-// Returns completions for taskId this ISO week that exceed the quota.
-// e.g. quota=3, 5 completions this week → 2 Extra Credit completions.
-int extraCreditThisWeek(
-  String taskId,
-  int quota,
-  List<TaskCompletion> completions,
-  DateTime today,
-);
-
-// Returns true if the task's consistencyRatio >= 120.0 AND the task has not
-// already triggered an unlock (i.e., its id is not in previouslyUnlocked).
-bool shouldTriggerCapacityUnlock(
-  String taskId,
-  int quota,
-  List<TaskCompletion> completions,
-  DateTime today,
-  Set<String> previouslyUnlocked, {
-  int windowWeeks = 6,
-});
-
-// Returns the Rank based on total unlock count.
-Rank rankFromUnlockCount(int totalUnlocks);
-
-// Returns the adjusted daily energy baseline:
-// baselinePoints + (totalCapacityUnlocks * 5).
-int adjustedBaseline(int baselinePoints, int totalCapacityUnlocks);
-```
-
-**Acceptance criteria** (pure Dart unit tests):
-- `extraCreditThisWeek`: quota 3, 5 completions this week → 2. Quota 3, 3 completions → 0. Quota 3, 1 completion → 0.
-- `shouldTriggerCapacityUnlock`: ratio ≥ 120% and task not in previouslyUnlocked → true. Ratio ≥ 120% but task already in previouslyUnlocked → false. Ratio < 120% → false.
-- `rankFromUnlockCount`: 0 → novice, 1 → adept, 4 → adept, 5 → master, 10 → master.
-- `adjustedBaseline`: 80 pts, 3 unlocks → 95 pts. 80 pts, 0 unlocks → 80 pts.
-- Extra Credit completions in current week are counted in `extraCreditThisWeek` but do NOT inflate `consistencyRatio` above 100% for the current week (the ratio window counts a week as 1 hit regardless of completions beyond quota).
-
----
-
-### Task 3 — RankUpEvent model + FirestorePaths update
-
-**File:** `lib/features/gamification/rank_up_event.dart`
-
-**Fields:**
-
-| Field | Type | Notes |
-|---|---|---|
-| `id` | `String` | |
-| `taskId` | `String` | The recurring task that triggered the unlock |
-| `triggeredAt` | `DateTime` (UTC) | When the unlock was detected |
-| `newBaselinePoints` | `int` | The user's adjusted baseline after this unlock |
-| `newRank` | `Rank` | The global rank at the time of this unlock |
-
-Use `@freezed` + `@JsonSerializable`. `Rank` enum must be JSON-serializable
-(use `@JsonValue` or a custom converter).
-
-**FirestorePaths update:**
-Add `rankUpEvents(String uid)` → `"users/$uid/rank_up_events"`.
+**Providers:**
+- `storageModeProvider` — `AsyncNotifierProvider<StorageModeNotifier, StorageMode>`
+  - On first read: checks `shared_preferences` for key `storage_mode`.
+    If absent, returns `StorageMode.local` as default (no write yet).
+  - `setMode(StorageMode mode)` — persists to `shared_preferences` and updates state.
+- `isOnboardingCompleteProvider` — `FutureProvider<bool>` — true if `storage_mode`
+  key exists in `shared_preferences` (i.e., user has made a choice).
 
 **Acceptance criteria:**
-- JSON roundtrip preserves all fields including `Rank` enum value.
-- `FirestorePaths.rankUpEvents("abc123") == "users/abc123/rank_up_events"`.
-- Unit tests cover both.
+- First launch (no key): `storageModeProvider` returns `StorageMode.local`.
+- After `setMode(StorageMode.cloud)`: `storageModeProvider` returns `StorageMode.cloud`
+  and the key is persisted in `shared_preferences`.
+- `isOnboardingCompleteProvider` returns false when no key exists, true after `setMode`.
 
 ---
 
-### Task 4 — GamificationRepository & Provider
+### Task 2 — Drift database
 
-**File:** `lib/features/gamification/gamification_repository.dart`
+**File:** `lib/shared/local/app_database.dart`
 
-**Interface:**
+A single `drift` `DriftDatabase` class with tables for all eight entity types.
+Use `drift_flutter` for the SQLite connection on mobile.
 
-| Method | Return | Behavior |
-|---|---|---|
-| `watchAllRankUpEvents()` | `Stream<List<RankUpEvent>>` | All events, ordered by triggeredAt asc |
-| `addRankUpEvent(RankUpEvent event)` | `Future<void>` | |
-| `watchUnlockedTaskIds()` | `Stream<Set<String>>` | The set of taskIds that have ever triggered an unlock |
+**Tables (column names mirror JSON field names from the Freezed models):**
 
-**Provider:**
-- `gamificationRepositoryProvider`
-- `rankUpEventsProvider` — `StreamProvider<List<RankUpEvent>>`
-- `unlockedTaskIdsProvider` — `StreamProvider<Set<String>>`
+| Table | Key columns |
+|---|---|
+| `goals` | id TEXT PK, title, description, goalType, energyScore, weeklyQuota, contextId, createdAt, completedAt, archivedAt |
+| `projects` | id TEXT PK, goalId, title, description, status, dueDate, createdAt, completedAt |
+| `tasks` | id TEXT PK, parentId, parentType, title, description, taskType, energyScore, weeklyQuota, contextId, status, dueDate, estimatedMinutes, createdAt, completedAt |
+| `contexts` | id TEXT PK, name, colorHex, createdAt |
+| `task_completions` | id TEXT PK, taskId, completedAt, energyScore |
+| `trackers` | id TEXT PK, taskId, startedAt, pausedAt, stoppedAt, durationSeconds, overtimeSeconds, lastCheckInAt, status |
+| `brain_dump_items` | id TEXT PK, text, createdAt, backloggedUntil, scheduledForDate |
+| `rank_up_events` | id TEXT PK, taskId, triggeredAt, newBaselinePoints, newRank |
 
-**Acceptance criteria** (tests use `fake_cloud_firestore`):
-- Given empty collection, `watchAllRankUpEvents` emits empty list.
-- After `addRankUpEvent`, `watchAllRankUpEvents` emits a list containing it.
-- `watchUnlockedTaskIds` returns the set of distinct taskIds from all events.
-- No raw Firestore calls outside repository.
+All DateTime columns are stored as ISO 8601 TEXT (UTC). Nullable columns are
+`TEXT?` or `INTEGER?` as appropriate.
+
+**Acceptance criteria:**
+- Database opens without error on first use.
+- Each table can insert, update, delete, and select rows.
+- Unit tests (using drift's in-memory `NativeDatabase.memory()`) cover insert +
+  select roundtrip for at least one row per table.
 
 ---
 
-### Task 5 — GamificationService providers
+### Task 3 — Abstract repository interfaces
 
-**File:** `lib/features/gamification/gamification_service.dart`
+Add an abstract interface class for every repository that will have two
+implementations. Place each interface in the same file as the existing Firestore
+repository (or a `_interface.dart` sibling — Dev's choice, keep it simple).
 
-Riverpod providers that wire `ConsistencyEngine`, `GamificationEngine`, and the
-existing `EnergyEngine`/`EnergyService` together. Not a pure Dart file — Riverpod
-imports are fine here.
-
-**Providers to expose:**
+**Interfaces required:**
 
 ```dart
-// Map from taskId → consistencyRatio (%) for all recurring tasks with a weeklyQuota.
-// Computed from allCompletionsProvider + all recurring tasks.
-@riverpod
-Map<String, double> taskConsistencyRatios(Ref ref);
+abstract class IGoalsRepository {
+  Stream<List<Goal>> watchAll();
+  Future<void> addGoal(Goal goal);
+  Future<void> updateGoal(Goal goal);
+  Future<void> deleteGoal(String id);
+}
 
-// The current global rank derived from unlockedTaskIdsProvider count.
-@riverpod
-Rank currentRank(Ref ref);
-
-// The adjusted daily energy baseline:
-// energyService baseline + (unlockCount * 5).
-@riverpod
-int adjustedEnergyBaseline(Ref ref);
-
-// Detects any recurring tasks that should now trigger a Capacity Unlock
-// (ratio >= 120%, not yet in unlockedTaskIds).
-// Returns their taskIds. The caller (future UI sprint) will create RankUpEvents
-// and call gamificationRepository.addRankUpEvent().
-// This sprint: expose the detection provider only; writing is deferred to a
-// future sprint when the UI confirms the unlock to the user.
-@riverpod
-List<String> pendingCapacityUnlocks(Ref ref);
+abstract class IProjectsRepository { /* same pattern */ }
+abstract class ITasksRepository { /* same pattern */ }
+abstract class IContextsRepository { /* same pattern */ }
+abstract class ITaskCompletionRepository { /* same pattern */ }
+abstract class ITrackerRepository { /* same pattern */ }
+abstract class IBrainDumpRepository {
+  Stream<List<BrainDumpItem>> watchAllItems();
+  Stream<List<BrainDumpItem>> watchActiveItems(DateTime today);
+  Future<void> addItem(BrainDumpItem item);
+  Future<void> updateItem(BrainDumpItem item);
+  Future<void> deleteItem(String id);
+}
+abstract class IGamificationRepository {
+  Stream<List<RankUpEvent>> watchAllRankUpEvents();
+  Future<void> addRankUpEvent(RankUpEvent event);
+  Stream<Set<String>> watchUnlockedTaskIds();
+}
 ```
 
-**Acceptance criteria** (unit tests using fakes):
-- `taskConsistencyRatios`: given a task with 6/6 weeks at quota, ratio = 100.0.
-- `currentRank`: 0 unlocks → Rank.novice; 1 unlock → Rank.adept; 5 unlocks → Rank.master.
-- `adjustedEnergyBaseline`: 80-point baseline + 3 unlocks → 95.
-- `pendingCapacityUnlocks`: task with ratio ≥ 120% not yet in unlockedTaskIds → appears; task already unlocked → does not appear.
+Make each existing Firestore repository class `implements` its interface.
+
+**Acceptance criteria:**
+- `dart analyze` passes — no type errors after adding `implements`.
+- All existing tests still pass.
 
 ---
 
-## Out of scope for Sprint 9
+### Task 4 — Local repository implementations
 
-- Gamification UI (rank display, badge gallery, capacity-unlock animation) — Sprint 13
-- Badge engine (volume/consistency/CRM achievements) — Sprint 13
-- Writing `RankUpEvent` from UI confirmation — Sprint 13
-- CRM integration — Sprint 10
+One local implementation per interface, backed by the drift database from Task 2.
+Each class `implements` its interface.
+
+**Files:**
+- `lib/features/goals/goals_repository_local.dart` → `class GoalsRepositoryLocal implements IGoalsRepository`
+- `lib/features/goals/projects_repository_local.dart`
+- `lib/features/goals/tasks_repository_local.dart`
+- `lib/features/goals/contexts_repository_local.dart`
+- `lib/features/energy/task_completion_repository_local.dart`
+- `lib/features/timer/tracker_repository_local.dart`
+- `lib/features/triage/brain_dump_repository_local.dart`
+- `lib/features/gamification/gamification_repository_local.dart`
+
+Each local repo receives the `AppDatabase` as a constructor parameter.
+`watchAll*` / `watchActive*` methods return `Stream` from drift's `watch()` query.
+All DateTime fields must be stored/retrieved as UTC ISO 8601 strings.
+
+**Acceptance criteria** (unit tests using drift in-memory database):
+- For each local repository: add an item, watch stream, verify it emits the item.
+- For `BrainDumpRepositoryLocal.watchActiveItems`: same three filter tests as
+  the Firestore version (backloggedUntil yesterday appears; tomorrow does not;
+  scheduledForDate set does not appear).
+- No raw SQL strings — use drift's type-safe query API only.
+
+---
+
+### Task 5 — Repository provider factory
+
+Update each repository provider to return the correct implementation based on
+`storageModeProvider`. Use a pattern like:
+
+```dart
+@riverpod
+IGoalsRepository goalsRepository(Ref ref) {
+  final mode = ref.watch(storageModeProvider).valueOrNull ?? StorageMode.local;
+  return mode == StorageMode.cloud
+      ? GoalsRepository(ref)       // existing Firestore impl
+      : GoalsRepositoryLocal(ref.watch(appDatabaseProvider));
+}
+```
+
+Add `appDatabaseProvider` — a singleton `Provider<AppDatabase>` that lazily opens
+the drift database once and reuses it.
+
+**Acceptance criteria:**
+- In cloud mode, all feature providers still use Firestore repositories (no regression).
+- In local mode, all feature providers use the drift-backed local repositories.
+- Switching `StorageMode` via `setMode()` invalidates all repository providers and
+  re-resolves them to the new implementation.
+- All existing tests still pass (they already use fakes, so mode-switching doesn't break them).
+
+---
+
+### Task 6 — Migration service
+
+**File:** `lib/shared/migration_service.dart`
+
+```dart
+class MigrationService {
+  // Reads all data from local drift repositories, writes each record to
+  // Firestore under the authenticated user's UID, then calls
+  // storageModeNotifier.setMode(StorageMode.cloud).
+  // Returns normally on success; throws on any Firestore write failure.
+  // Does NOT delete local data — local DB is kept as a fallback cache.
+  Future<void> migrateLocalToCloud(String uid);
+}
+```
+
+**Provider:** `migrationServiceProvider`
+
+**Acceptance criteria:**
+- Unit test (using fake repositories): after `migrateLocalToCloud`, all records
+  present in the local DB appear in the fake Firestore repository, and
+  `storageModeProvider` returns `StorageMode.cloud`.
+- If any Firestore write fails, the error propagates and `StorageMode` is NOT
+  changed (no partial migration leaves the app in an inconsistent state).
+
+---
+
+### Task 7 — WelcomeScreen
+
+**File:** `lib/shared/screens/welcome_screen.dart`
+
+Built per the Designer's spec. Uses `storageModeProvider` and
+`isOnboardingCompleteProvider`.
+
+**Behavior:**
+- Shown on app launch only when `isOnboardingCompleteProvider` is false.
+- "Continue without account" → `storageModeNotifier.setMode(StorageMode.local)` →
+  navigate to `RootScreen`.
+- "Sign in / Create account" → trigger anonymous Firebase Auth sign-in →
+  `storageModeNotifier.setMode(StorageMode.cloud)` → navigate to `RootScreen`.
+- On either path: once `setMode` is called, `isOnboardingCompleteProvider`
+  becomes true and `WelcomeScreen` is never shown again.
+
+**main.dart change:** On startup, check `isOnboardingCompleteProvider`:
+- false → show `WelcomeScreen`
+- true → show `RootScreen` directly (existing behavior for returning users)
+
+Skip Firebase initialization entirely when `StorageMode.local` is active.
+
+**Acceptance criteria:**
+- Widget test: WelcomeScreen renders both options.
+- Widget test: tapping "Continue without account" calls `setMode(local)` and
+  navigates away from WelcomeScreen.
+- Widget test: tapping "Sign in" triggers auth and calls `setMode(cloud)`.
+- Widget test: when `isOnboardingCompleteProvider` is true, WelcomeScreen is
+  not shown (app goes directly to RootScreen).
+- No raw Firebase calls inside `welcome_screen.dart`.
+
+---
+
+## Out of scope for Sprint 10
+
+- Settings screen toggle for switching storage mode post-onboarding — future sprint
+- Cloud → local migration (reverse) — not planned
+- Real Google/Apple sign-in — Sprint 15
+- Data conflict resolution if the same local DB is migrated twice — deferred
 
 ---
 

@@ -48,6 +48,29 @@ or an Optimization change, escalate to the PM (`AGENTS.md` §8) rather than figh
 A maintained `truth/design.md`, a per-sprint visual spec, a UI-review verdict, a
 journal line, and a handoff entry.
 
+## Terminal handoff announcement
+
+At the very end of every terminal response — after all design work and verification
+output — print a clearly visible handoff block so the human operator always knows
+exactly where the work goes next. No exceptions.
+
+```
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+HANDOFF → [Role]
+[One sentence: what you're handing and why.]
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+```
+
+Your specific scenarios:
+
+| Situation | Handoff line |
+|---|---|
+| Pre-spec complete | `HANDOFF → Dev — Sprint N visual spec added to design.md. Ready to build.` |
+| UI review approved | `HANDOFF → Optimization — Sprint N UI approved; design fidelity confirmed. Ready for code review.` |
+| UI review kickback | `HANDOFF → Dev — [N] design issue(s) found; fix list returned. Re-review required before Optimization.` |
+| Non-UI sprint (sitting out) | `HANDOFF → Dev — Non-UI sprint confirmed; no design work needed. Dev should proceed directly to Optimization.` |
+| Design conflict with Security or Optimization | `HANDOFF → PM — Design conflict with [Security/Optimization]; escalation required.` |
+
 ## Handoff file duties (`AGENTS.md` §9)
 
 - **On startup:** read `truth/handoff.md` top to bottom, then act on the last entry

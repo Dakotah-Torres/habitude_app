@@ -3,7 +3,8 @@ import '../energy/task_completion.dart';
 
 /// Returns the Monday 00:00:00 UTC of the week containing the given date.
 DateTime startOfISOWeek(DateTime date) {
-  final utcDate = DateTime.utc(date.year, date.month, date.day);
+  final dateUtc = date.toUtc();
+  final utcDate = DateTime.utc(dateUtc.year, dateUtc.month, dateUtc.day);
   return utcDate.subtract(Duration(days: utcDate.weekday - 1));
 }
 
@@ -21,8 +22,9 @@ int weeksHittingQuota(
   if (quota <= 0) return 0;
 
   final currentWeekStart = startOfISOWeek(today);
-  final windowStart =
-      currentWeekStart.subtract(Duration(days: (windowWeeks - 1) * 7));
+  final windowStart = currentWeekStart.subtract(
+    Duration(days: (windowWeeks - 1) * 7),
+  );
 
   int hits = 0;
   for (int i = 0; i < windowWeeks; i++) {
@@ -56,8 +58,9 @@ int totalWindowExtraCredit(
   if (quota <= 0) return 0;
 
   final currentWeekStart = startOfISOWeek(today);
-  final windowStart =
-      currentWeekStart.subtract(Duration(days: (windowWeeks - 1) * 7));
+  final windowStart = currentWeekStart.subtract(
+    Duration(days: (windowWeeks - 1) * 7),
+  );
 
   int totalExtra = 0;
   for (int i = 0; i < windowWeeks; i++) {
@@ -93,8 +96,9 @@ int evaluationWindowSize(
   final earliestWeekStart = startOfISOWeek(taskCompletions.first.completedAt);
 
   final currentWeekStart = startOfISOWeek(today);
-  final fullWindowStart =
-      currentWeekStart.subtract(Duration(days: (windowWeeks - 1) * 7));
+  final fullWindowStart = currentWeekStart.subtract(
+    Duration(days: (windowWeeks - 1) * 7),
+  );
 
   final effectiveStart = earliestWeekStart.isAfter(fullWindowStart)
       ? earliestWeekStart

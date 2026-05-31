@@ -8,55 +8,49 @@
 
 ---
 
-## [S9] PM → Dev — kickoff
+## [S10] PM → Designer — pre-spec requested
 STATUS: approved
-SUMMARY: Sprint 9 approved by human operator. Dev to build the Gamification Engine: ConsistencyEngine, GamificationEngine, RankUpEvent model/repo, and GamificationService providers.
+SUMMARY: Sprint 10 approved by human operator. Designer to pre-spec the WelcomeScreen — the app's first-launch onboarding surface — before Dev builds.
 DETAILS:
-  Sprint 9 is a non-UI sprint. Loop:
-    PM → Dev → Optimization → Security → PM closes.
+  Sprint 10 is a UI sprint. Loop:
+    PM → Designer (pre-spec) → Dev → Designer (UI review) → Optimization → Security → PM closes.
 
-  Five tasks — all in lib/features/gamification/:
-    Task 1: ConsistencyEngine (pure Dart)
-      - consistency_engine.dart
-      - weeksHittingQuota(), evaluationWindowSize(), consistencyRatio()
-      - Rolling 6-week ISO-week window; ratio = weeksHittingQuota / windowSize * 100
-      - Extra Credit week still counts as 1 hit (not inflated)
-    Task 2: GamificationEngine (pure Dart)
-      - gamification_engine.dart
-      - extraCreditThisWeek(), shouldTriggerCapacityUnlock(), rankFromUnlockCount(),
-        adjustedBaseline()
-      - Capacity Unlock fires when consistencyRatio >= 120% and taskId not yet unlocked
-      - Rank: Novice (0), Adept (1–4), Master (5+)
-    Task 3: RankUpEvent model + FirestorePaths
-      - rank_up_event.dart — @freezed model with id, taskId, triggeredAt (UTC),
-        newBaselinePoints, newRank
-      - Add rankUpEvents(String uid) to lib/shared/firestore_paths.dart
-    Task 4: GamificationRepository + providers
-      - gamification_repository.dart
-      - watchAllRankUpEvents(), addRankUpEvent(), watchUnlockedTaskIds()
-      - Providers: gamificationRepositoryProvider, rankUpEventsProvider,
-        unlockedTaskIdsProvider
-    Task 5: GamificationService providers
-      - gamification_service.dart
-      - taskConsistencyRatios, currentRank, adjustedEnergyBaseline,
-        pendingCapacityUnlocks providers
+  Designer's job (Phase A):
+    Append "Sprint 10 visual spec — Welcome Screen" to truth/design.md.
+    One surface: WelcomeScreen.
+    Required spec elements:
+      - Full layout: app name, one-line tagline ("manage energy, not time"),
+        optional subtle hero element (described in words), privacy reassurance line,
+        two primary tap targets.
+      - Option 1 "Continue without account": the default, low-friction path.
+        Copy must not use language like "Limited mode" or "Offline only" — the
+        local mode is a full first-class path, not a downgrade.
+      - Option 2 "Sign in / Create account": the cloud-sync path. In Sprint 10
+        this wires up anonymous auth as a placeholder; real sign-in is Sprint 15.
+        Copy should frame this as unlocking sync, not fixing a deficiency.
+      - Transition out of the screen (e.g., fade to RootScreen). Lightweight —
+        no carousel.
+      - Design constraints: Sedona Sunset palette, Material 3, calm by default,
+        no more than two primary tap targets, screen never shown again after choice.
 
-  Key constraints:
-    - consistency_engine.dart and gamification_engine.dart must be pure Dart:
-      no Flutter, Riverpod, or Firestore imports.
-    - gamification_service.dart may use Riverpod — it is the wiring layer.
-    - All DateTime values use UTC (DateTime.now().toUtc(), DateTime.utc(...)).
-    - No new packages without PM sign-off.
-    - No raw Firestore calls outside the repository.
-    - Tests: pure Dart unit tests for engines; fake_cloud_firestore for repository;
-      Riverpod fakes for service providers.
+  Key Dev constraints (carry forward):
+    - Three new packages are pre-approved for Sprint 10 only:
+        drift (+ drift_flutter) and sqlite3_flutter_libs.
+      No other packages without PM sign-off.
+    - All DateTime values must use DateTime.now().toUtc() / stored as UTC ISO 8601.
+    - No raw Firestore calls in screen/widget files.
+    - Local mode must skip Firebase initialization entirely.
+    - Repository providers must transparently switch implementations based on
+      StorageMode — no feature code should reference local/Firestore repos directly.
 
-  Existing providers to wire into GamificationService:
-    - EnergyService baseline (Sprint 4) — lib/features/energy/energy_service.dart
-    - TasksRepository / tasksProvider (Sprint 2) — for recurring tasks list
-    - TaskCompletionRepository / allCompletionsProvider (Sprint 4) — for completions
-
-  See truth/sprint.md for full acceptance criteria per task.
+  Sprint 10 has 7 Dev tasks (see truth/sprint.md for full acceptance criteria):
+    Task 1: StorageMode enum + storageModeProvider + isOnboardingCompleteProvider
+    Task 2: AppDatabase (drift) — 8 tables mirroring all domain models
+    Task 3: Abstract repository interfaces + Firestore repos implement them
+    Task 4: Local repository implementations (8 files, drift-backed)
+    Task 5: Repository provider factory (switches on StorageMode)
+    Task 6: MigrationService (local → Firestore, one-way)
+    Task 7: WelcomeScreen (per Designer spec) + main.dart onboarding gate
 VERIFICATION:
   n/a (kickoff — awaiting human approval)
 ---

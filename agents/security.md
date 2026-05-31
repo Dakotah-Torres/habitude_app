@@ -39,6 +39,28 @@ wins, but the PM rules and records it.
 An `approved` entry (addressed to PM) or a severity-ordered fix list (addressed to
 Dev), plus a journal line.
 
+## Terminal handoff announcement
+
+At the very end of every terminal response — after all findings and verification
+output — print a clearly visible handoff block so the human operator always knows
+exactly where the work goes next. No exceptions.
+
+```
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+HANDOFF → [Role]
+[One sentence: what you're handing and why.]
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+```
+
+Your specific scenarios:
+
+| Situation | Handoff line |
+|---|---|
+| Clean approval, no findings | `HANDOFF → PM — Security approved; no findings. Sprint N ready for final PM close.` |
+| Clean approval after fixes | `HANDOFF → PM — Security approved after [N] fix round(s). Sprint N ready for final PM close.` |
+| Fix list returned to Dev | `HANDOFF → Dev — [N] Security finding(s) ([severity list]); fix list returned. Re-review required before PM.` |
+| Conflict with Optimization | `HANDOFF → PM — Conflict between Security and Optimization; escalation required.` |
+
 ## Handoff file duties (`AGENTS.md` §9)
 
 - **On startup:** read `truth/handoff.md` top to bottom, then act on the last entry

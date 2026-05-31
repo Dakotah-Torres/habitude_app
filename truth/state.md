@@ -6,8 +6,8 @@
 
 ## Current sprint
 
-**Sprint 9** — Gamification Engine.
-Non-UI sprint — Dev builds directly after PM.
+**Sprint 10** — Local-First Storage Layer.
+UI sprint — Designer pre-specs the Welcome screen before Dev builds.
 See `truth/sprint.md`. Status: **awaiting human approval.**
 
 ## Locked decisions
@@ -118,6 +118,14 @@ Tracker model/repo, TimerState + TimerStatus enum, TimerNotifier (startTimer/pau
 resumeTimer/stopTimer/reconcile), shared_preferences persistence, pure helpers
 computeElapsed/isComplete. 93 tests pass.
 
+### Sprint 9 — Gamification Engine (closed 2026-05-31)
+ConsistencyEngine (rolling 6-week ISO-week ratio with Extra Credit pooling),
+GamificationEngine (extra credit detection, Capacity Unlock trigger at ≥120%,
+rank from unlock count, adjusted baseline), RankUpEvent model + repository,
+GamificationService providers (taskConsistencyRatios, currentRank,
+adjustedEnergyBaseline, pendingCapacityUnlocks). PM tie-breaker on Extra Credit
+formula recorded. No new LOW items from Security. 150 tests pass.
+
 ### Sprint 8 — Brain Dump + Morning Triage Funnel (closed 2026-05-31)
 BrainDumpItem model/repo, TriageService (pure Dart, ISO-week logic), triage_providers.dart,
 BrainDumpScreen, TriageFunnelScreen (swipe + explicit buttons, resting directional hints),
@@ -182,6 +190,70 @@ two rounds of Designer UI review, Optimization, Security). 100 tests pass.
   File: `lib/features/triage/screens/triage_funnel_screen.dart:173,175,180`.
 
 ## Tie-breaker rulings
+
+### [S9] Consistency ratio formula — tie-breaker ruling
+
+**Conflict:** Sprint 9 spec said Extra Credit weeks count as 1 hit (capped, correct)
+AND that `consistencyRatio >= 120%` triggers a Capacity Unlock (correct) AND that
+"Extra Credit does not inflate ratio above 100% for the current week" — the last
+clause was ambiguous and made the 120% threshold mathematically unreachable.
+
+**Ruling:** The per-week binary cap applies only to `weeksHittingQuota`. Extra Credit
+completions are summed across the entire window and added separately to the numerator.
+
+**Canonical formula:**
+```
+consistencyRatio = (weeksHittingQuota + totalWindowExtraCredit) / windowSize × 100
+```
+Where `totalWindowExtraCredit` = sum of max(0, weekCompletions − quota) for every
+week in the rolling window.
+
+**Example:** 6-week window, all 6 weeks hit quota, 2 total EC completions →
+`(6 + 2) / 6 × 100 = 133%` → Capacity Unlock triggers.
+
+The conflicting acceptance bullet in sprint.md ("Extra Credit completions do NOT
+inflate consistencyRatio above 100% for the current week") is superseded by this
+ruling. `truth/spec.md §5` explicitly states Extra Credit heals past consistency
+and that 120% is achievable — the sprint spec cannot contradict the feature spec.
+
+### [Pre-S10] Hybrid local-first architecture — locked
+
+**Decision:** The app ships with two storage modes.
+
+**`StorageMode.local` (default):**
+- Chosen on first launch from the Welcome screen ("Continue without account").
+- All data is stored on-device via SQLite (`drift`).
+- No Firebase, no network calls, no account required.
+- App is fully functional in this mode indefinitely.
+
+**`StorageMode.cloud`:**
+- Chosen from the Welcome screen ("Create Account / Sign in").
+- Backed by Firestore + Firebase Auth (anonymous auth now; real sign-in Sprint 15).
+- Multi-device sync and cloud backup.
+
+**Welcome screen (Sprint 10):**
+- Shown on first launch only (not shown again once a mode is chosen).
+- Two clear options: "Continue without account" and "Sign in / Create account".
+- "Sign in / Create account" in Sprint 10 uses anonymous auth as a placeholder;
+  real Google/Apple sign-in is wired in Sprint 15 and upgrades the anonymous session.
+
+**Local → Cloud migration (Sprint 10):**
+- When a local-mode user later chooses to sign in (from settings or a prompt),
+  all local data is migrated to Firestore before switching StorageMode to cloud.
+- Migration is a one-way operation; no cloud → local migration in scope.
+
+**Repository pattern:**
+- Every repository interface is backed by two implementations:
+  `<Repo>Local` (drift) and `<Repo>Firestore` (existing).
+- A `repositoryModeProvider` reads `StorageMode` and returns the correct
+  implementation. All feature providers consume the interface, never the
+  concrete class directly.
+
+**Packages added (Sprint 10):**
+- `drift` + `drift_flutter` — SQLite ORM
+- `sqlite3_flutter_libs` — native SQLite binaries (required peer dep)
+
+These three packages are hereby signed off by PM for Sprint 10.
 
 > Conflicts the PM has resolved (`AGENTS.md` §8), with reasoning.
 

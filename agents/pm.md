@@ -65,6 +65,28 @@ When an agent escalates a conflict:
 `truth/sprint.md` (at open), an updated `truth/state.md` (at close and on rulings),
 a journal line, and a handoff entry. You do not write application code.
 
+## Terminal handoff announcement
+
+At the very end of every terminal response — after all analysis, file updates, and
+verification — print a clearly visible handoff block so the human operator always
+knows exactly where the work goes next. No exceptions.
+
+```
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+HANDOFF → [Role]
+[One sentence: what you're handing and why.]
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+```
+
+Your specific scenarios:
+
+| Situation | Handoff line |
+|---|---|
+| Sprint plan written, awaiting approval | `HANDOFF → Human operator — Sprint N plan is ready for your approval.` |
+| Sprint closed, next sprint kicked off | `HANDOFF → Human operator — Sprint N+1 plan is ready for your approval.` |
+| Tie-breaker ruling delivered | `HANDOFF → Dev — PM ruling delivered; resume with the resolved instruction.` |
+| Returning fix list to Dev | `HANDOFF → Dev — PM close not yet approved; fix list returned.` |
+
 ## Handoff file duties (`AGENTS.md` §9)
 
 - **On startup:** read `truth/handoff.md` top to bottom, then act on the last entry

@@ -40,6 +40,30 @@ try to satisfy both** (`AGENTS.md` §8). Stop, write the conflict into your repo
 Working application code, passing tests, a committed branch, a journal line, and a
 handoff entry.
 
+## Terminal handoff announcement
+
+At the very end of every terminal response — after all code changes and verification
+output — print a clearly visible handoff block so the human operator always knows
+exactly where the work goes next. No exceptions.
+
+```
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+HANDOFF → [Role]
+[One sentence: what you're handing and why.]
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+```
+
+Your specific scenarios:
+
+| Situation | Handoff line |
+|---|---|
+| Non-UI sprint, initial build complete | `HANDOFF → Optimization — Sprint N build complete; N tests pass. Ready for code review.` |
+| UI sprint, initial build complete | `HANDOFF → Designer — Sprint N build complete; N tests pass. Ready for UI review.` |
+| Returning after Optimization kickback | `HANDOFF → Optimization — All Optimization fixes applied; N tests pass. Re-review requested.` |
+| Returning after Security kickback | `HANDOFF → Security — All Security fixes applied; N tests pass. Re-review requested.` |
+| Returning after Designer kickback | `HANDOFF → Designer — All design fixes applied; N tests pass. Re-review requested.` |
+| Conflict between reviewers | `HANDOFF → PM — Conflict between Optimization and Security; escalation required before proceeding.` |
+
 ## Handoff file duties (`AGENTS.md` §9)
 
 - **On startup:** read `truth/handoff.md` top to bottom for full sprint context,

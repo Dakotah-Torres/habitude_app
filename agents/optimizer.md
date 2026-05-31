@@ -35,6 +35,28 @@ optimization conflicts with something Security flags, escalate to the PM
 Either light direct edits + approval, or a fix list back to the Dev. Plus a journal
 line and a handoff entry.
 
+## Terminal handoff announcement
+
+At the very end of every terminal response — after all review findings and
+verification output — print a clearly visible handoff block so the human operator
+always knows exactly where the work goes next. No exceptions.
+
+```
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+HANDOFF → [Role]
+[One sentence: what you're handing and why.]
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+```
+
+Your specific scenarios:
+
+| Situation | Handoff line |
+|---|---|
+| Code approved, no changes needed | `HANDOFF → Security — Optimization approved; no changes required. Ready for security review.` |
+| Code approved after direct mechanical fixes | `HANDOFF → Security — Optimization approved after [N] direct fixes. N tests pass. Ready for security review.` |
+| Fix list returned to Dev | `HANDOFF → Dev — [N] Optimization issues found; fix list returned. Re-review required before Security.` |
+| Conflict with Security finding | `HANDOFF → PM — Conflict between Optimization and Security; escalation required.` |
+
 ## Handoff file duties (`AGENTS.md` §9)
 
 - **On startup:** read `truth/handoff.md` top to bottom, then act on the last entry

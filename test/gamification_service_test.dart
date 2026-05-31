@@ -26,16 +26,33 @@ void main() {
       final container = ProviderContainer(
         overrides: [
           tasksStreamProvider.overrideWith((ref) => Stream.value([t1])),
-          taskCompletionsStreamProvider.overrideWith((ref) => Stream.value([
-            TaskCompletion(id: 'c1', taskId: 't1', energyScore: 10, completedAt: DateTime.now().toUtc()),
-            TaskCompletion(id: 'c2', taskId: 't1', energyScore: 10, completedAt: DateTime.now().toUtc()),
-            TaskCompletion(id: 'c3', taskId: 't1', energyScore: 10, completedAt: DateTime.now().toUtc()),
-          ])),
+          taskCompletionsStreamProvider.overrideWith(
+            (ref) => Stream.value([
+              TaskCompletion(
+                id: 'c1',
+                taskId: 't1',
+                energyScore: 10,
+                completedAt: DateTime.now().toUtc(),
+              ),
+              TaskCompletion(
+                id: 'c2',
+                taskId: 't1',
+                energyScore: 10,
+                completedAt: DateTime.now().toUtc(),
+              ),
+              TaskCompletion(
+                id: 'c3',
+                taskId: 't1',
+                energyScore: 10,
+                completedAt: DateTime.now().toUtc(),
+              ),
+            ]),
+          ),
         ],
       );
 
-      container.listen(tasksStreamProvider, (_, __) {});
-      container.listen(taskCompletionsStreamProvider, (_, __) {});
+      container.listen(tasksStreamProvider, (_, _) {});
+      container.listen(taskCompletionsStreamProvider, (_, _) {});
 
       await container.read(tasksStreamProvider.future);
       await container.read(taskCompletionsStreamProvider.future);
@@ -47,34 +64,41 @@ void main() {
     test('currentRank derived from unlockedTaskIds count', () async {
       final container = ProviderContainer(
         overrides: [
-          unlockedTaskIdsProvider.overrideWith((ref) => Stream.value({'t1', 't2'})),
+          unlockedTaskIdsProvider.overrideWith(
+            (ref) => Stream.value({'t1', 't2'}),
+          ),
         ],
       );
 
-      container.listen(unlockedTaskIdsProvider, (_, __) {});
+      container.listen(unlockedTaskIdsProvider, (_, _) {});
       await container.read(unlockedTaskIdsProvider.future);
 
       final rank = container.read(currentRankProvider);
       expect(rank, Rank.adept);
     });
 
-    test('adjustedEnergyBaseline combines energyService baseline and unlocks', () async {
-      final container = ProviderContainer(
-        overrides: [
-          energyBaselineProvider.overrideWith((ref) => Stream.value(80)),
-          unlockedTaskIdsProvider.overrideWith((ref) => Stream.value({'t1', 't2', 't3'})),
-        ],
-      );
+    test(
+      'adjustedEnergyBaseline combines energyService baseline and unlocks',
+      () async {
+        final container = ProviderContainer(
+          overrides: [
+            energyBaselineProvider.overrideWith((ref) => Stream.value(80)),
+            unlockedTaskIdsProvider.overrideWith(
+              (ref) => Stream.value({'t1', 't2', 't3'}),
+            ),
+          ],
+        );
 
-      container.listen(energyBaselineProvider, (_, __) {});
-      container.listen(unlockedTaskIdsProvider, (_, __) {});
+        container.listen(energyBaselineProvider, (_, _) {});
+        container.listen(unlockedTaskIdsProvider, (_, _) {});
 
-      await container.read(energyBaselineProvider.future);
-      await container.read(unlockedTaskIdsProvider.future);
+        await container.read(energyBaselineProvider.future);
+        await container.read(unlockedTaskIdsProvider.future);
 
-      final adjusted = container.read(adjustedEnergyBaselineProvider);
-      expect(adjusted, 95);
-    });
+        final adjusted = container.read(adjustedEnergyBaselineProvider);
+        expect(adjusted, 95);
+      },
+    );
 
     test('pendingCapacityUnlocks detects tasks ready to unlock', () async {
       final t1 = Task(
@@ -91,19 +115,43 @@ void main() {
       final container = ProviderContainer(
         overrides: [
           tasksStreamProvider.overrideWith((ref) => Stream.value([t1])),
-          taskCompletionsStreamProvider.overrideWith((ref) => Stream.value([
-            TaskCompletion(id: 'c1', taskId: 't1', energyScore: 10, completedAt: DateTime.now().toUtc()),
-            TaskCompletion(id: 'c2', taskId: 't1', energyScore: 10, completedAt: DateTime.now().toUtc()),
-            TaskCompletion(id: 'c3', taskId: 't1', energyScore: 10, completedAt: DateTime.now().toUtc()),
-            TaskCompletion(id: 'c4', taskId: 't1', energyScore: 10, completedAt: DateTime.now().toUtc()),
-          ])),
-          unlockedTaskIdsProvider.overrideWith((ref) => Stream.value(<String>{})),
+          taskCompletionsStreamProvider.overrideWith(
+            (ref) => Stream.value([
+              TaskCompletion(
+                id: 'c1',
+                taskId: 't1',
+                energyScore: 10,
+                completedAt: DateTime.now().toUtc(),
+              ),
+              TaskCompletion(
+                id: 'c2',
+                taskId: 't1',
+                energyScore: 10,
+                completedAt: DateTime.now().toUtc(),
+              ),
+              TaskCompletion(
+                id: 'c3',
+                taskId: 't1',
+                energyScore: 10,
+                completedAt: DateTime.now().toUtc(),
+              ),
+              TaskCompletion(
+                id: 'c4',
+                taskId: 't1',
+                energyScore: 10,
+                completedAt: DateTime.now().toUtc(),
+              ),
+            ]),
+          ),
+          unlockedTaskIdsProvider.overrideWith(
+            (ref) => Stream.value(<String>{}),
+          ),
         ],
       );
 
-      container.listen(tasksStreamProvider, (_, __) {});
-      container.listen(taskCompletionsStreamProvider, (_, __) {});
-      container.listen(unlockedTaskIdsProvider, (_, __) {});
+      container.listen(tasksStreamProvider, (_, _) {});
+      container.listen(taskCompletionsStreamProvider, (_, _) {});
+      container.listen(unlockedTaskIdsProvider, (_, _) {});
 
       await container.read(tasksStreamProvider.future);
       await container.read(taskCompletionsStreamProvider.future);
