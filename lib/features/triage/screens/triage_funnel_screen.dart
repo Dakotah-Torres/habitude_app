@@ -56,7 +56,7 @@ class _TriageFunnelScreenState extends ConsumerState<TriageFunnelScreen> {
         );
         ref.read(brainDumpRepositoryProvider).updateItem(updated);
       },
-      task: (_, __) {
+      task: (_, _) {
         // No-op for tasks
       },
     );
@@ -68,7 +68,7 @@ class _TriageFunnelScreenState extends ConsumerState<TriageFunnelScreen> {
       brainDump: (brainDump) {
         ref.read(brainDumpRepositoryProvider).deleteItem(brainDump.id);
       },
-      task: (_, __) {
+      task: (_, _) {
         // No-op for tasks
       },
     );
@@ -178,16 +178,99 @@ class _TriageCard extends StatelessWidget {
           onRemove();
         }
       },
-      child: Card(
-        margin: EdgeInsets.zero,
-        elevation: 2,
-        child: Padding(
-          padding: const EdgeInsets.all(24.0),
-          child: item.when(
-            brainDump: (brainDump) => _BrainDumpContent(item: brainDump),
-            task: (task, completions) => _TaskContent(task: task, completions: completions),
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          Card(
+            margin: EdgeInsets.zero,
+            elevation: 2,
+            child: Padding(
+              padding: const EdgeInsets.all(24.0),
+              child: item.when(
+                brainDump: (brainDump) => _BrainDumpContent(item: brainDump),
+                task: (task, completions) =>
+                    _TaskContent(task: task, completions: completions),
+              ),
+            ),
           ),
-        ),
+          // Directional Hints
+          Positioned(
+            right: -12,
+            top: 0,
+            bottom: 0,
+            child: Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.bolt, color: AppColors.ember, size: 20),
+                  const SizedBox(height: 4),
+                  RotatedBox(
+                    quarterTurns: 1,
+                    child: Text(
+                      'DO TODAY',
+                      style: TextStyle(
+                        fontSize: 8,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.ember.withValues(alpha: 0.7),
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          Positioned(
+            left: -12,
+            top: 0,
+            bottom: 0,
+            child: Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.calendar_today_outlined,
+                      color: AppColors.mesaSky, size: 20),
+                  const SizedBox(height: 4),
+                  RotatedBox(
+                    quarterTurns: 3,
+                    child: Text(
+                      'TOMORROW',
+                      style: TextStyle(
+                        fontSize: 8,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.mesaSky.withValues(alpha: 0.7),
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          Positioned(
+            bottom: -24,
+            left: 0,
+            right: 0,
+            child: Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.keyboard_arrow_down,
+                      color: AppColors.juniper, size: 20),
+                  Text(
+                    'REMOVE',
+                    style: TextStyle(
+                      fontSize: 8,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.juniper.withValues(alpha: 0.5),
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -321,7 +404,7 @@ class _TriageButton extends StatelessWidget {
           onPressed: onPressed,
           icon: Icon(icon),
           style: IconButton.styleFrom(
-            backgroundColor: color.withOpacity(0.1),
+            backgroundColor: color.withValues(alpha: 0.1),
             foregroundColor: color,
           ),
         ),

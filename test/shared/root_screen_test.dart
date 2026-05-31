@@ -6,7 +6,6 @@ import 'package:habitude/features/goals/screens/goals_list_screen.dart';
 import 'package:habitude/features/triage/screens/brain_dump_screen.dart';
 import 'package:habitude/shared/theme.dart';
 import 'package:habitude/shared/auth_repository.dart';
-import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 
 void main() {
   testWidgets('RootScreen show Goals tab by default', (tester) async {

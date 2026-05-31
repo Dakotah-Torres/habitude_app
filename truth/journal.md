@@ -72,3 +72,5 @@
 [S7][PM] Sprint 7 closed. 100 tests pass, UI loop complete (2 Designer rounds), Security clean. timezone tie-breaker recorded. Two new LOW items logged. Sprint 8 scoped (Brain Dump + Triage Funnel). Awaiting human approval. → Human
 [S8][PM] Sprint 8 approved by human operator. Handed to Designer for pre-spec. → Designer
 [S8][Designer] Added Brain Dump + Triage visual spec for inbox, triage funnel, and bottom navigation entry point to truth/design.md. → Dev
+[S8][Dev] Implemented Brain Dump + Triage workflow: models, repositories, pure logic service, and UI with root bottom navigation. All tests pass (130 total). → Designer
+[S8][Designer] Reviewed Brain Dump + Triage UI; returned fixes for analyzer failure and missing triage card swipe direction indicators. flutter test passes. → Dev
